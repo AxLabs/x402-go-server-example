@@ -1,0 +1,95 @@
+// Package main is the entry point for the x402-paid-server-go application.
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
+	"github.com/bane-labs-org/x402-paid-server-go/internal/httpapi"
+	"github.com/bane-labs-org/x402-paid-server-go/internal/logging"
+	"github.com/bane-labs-org/x402-paid-server-go/internal/version"
+	"github.com/bane-labs-org/x402-paid-server-go/internal/x402"
+)
+
+func main() {
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load configuration", "error", err)
+		os.Exit(1)
+	}
+
+	logger := logging.NewLogger(cfg.LogLevel)
+
+	vInfo := version.Info()
+	logger.Info("starting x402-paid-server-go",
+		"version", vInfo.Version,
+		"commit", vInfo.Commit,
+		"build_time", vInfo.BuildTime,
+		"network", cfg.Payment.Network,
+		"facilitator_url", cfg.Facilitator.BaseURL,
+		"pay_to", cfg.Payment.PayToAddress,
+	)
+
+	// Build the SDK-backed x402 middleware. This constructs the SDK's
+	// HTTPFacilitatorClient, x402HTTPResourceServer with the EVM "exact"
+	// scheme server, and a net/http middleware that performs the full
+	// verify/settle protocol per request.
+	mw, err := x402.Middleware(x402.Config{
+		FacilitatorURL:         cfg.Facilitator.BaseURL,
+		FacilitatorTimeout:     cfg.Facilitator.Timeout,
+		Network:                httpapi.PaidNetwork(cfg),
+		PayTo:                  cfg.Payment.PayToAddress,
+		MaxTimeoutSeconds:      cfg.Payment.MaxTimeoutSeconds,
+		Routes:                 httpapi.PaidRoutes(cfg),
+		SyncFacilitatorOnStart: true,
+		Timeout:                cfg.Server.RequestTimeout,
+	})
+	if err != nil {
+		logger.Error("failed to build x402 middleware", "error", err)
+		os.Exit(1)
+	}
+
+	router := httpapi.NewRouter(httpapi.RouterConfig{
+		Config:         cfg,
+		Logger:         logger,
+		X402Middleware: mw,
+	})
+
+	server := httpapi.NewServer(
+		cfg.Server.Addr,
+		router,
+		cfg.Server.ReadTimeout,
+		cfg.Server.WriteTimeout,
+		logger,
+	)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- server.Start()
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
+		logger.Error("server error", "error", err)
+		os.Exit(1)
+	case sig := <-quit:
+		logger.Info("received shutdown signal", "signal", sig.String())
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("server shutdown error", "error", err)
+		os.Exit(1)
+	}
+
+	logger.Info("server stopped gracefully")
+}

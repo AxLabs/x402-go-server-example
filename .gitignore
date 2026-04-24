@@ -1,0 +1,33 @@
+# Binaries
+bin/
+*.exe
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Environment files (except example)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
+.cache/
+
+# Logs
+*.log
+
+.instructions/
+MIGRATION.md
