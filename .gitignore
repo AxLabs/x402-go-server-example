@@ -7,7 +7,7 @@ coverage.out
 coverage.html
 
 # Environment files (except example)
-.env
+.env**
 .env.local
 .env.*.local
 
