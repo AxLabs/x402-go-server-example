@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/version"
+	"github.com/AxLabs/x402-go-server-example/internal/config"
+	"github.com/AxLabs/x402-go-server-example/internal/version"
 )
 
 // InfoHandler handles info requests.
@@ -47,7 +47,7 @@ func (h *InfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	vInfo := version.Info()
 
 	JSON(w, http.StatusOK, InfoResponse{
-		Service:        "x402-paid-server-go",
+		Service:        "x402-go-server-example",
 		Version:        vInfo.Version,
 		Commit:         vInfo.Commit,
 		BuildTime:      vInfo.BuildTime,

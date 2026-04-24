@@ -20,9 +20,9 @@ import (
 
 	x402 "github.com/x402-foundation/x402/go"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/httpapi"
-	x402wrap "github.com/bane-labs-org/x402-paid-server-go/internal/x402"
+	"github.com/AxLabs/x402-go-server-example/internal/config"
+	"github.com/AxLabs/x402-go-server-example/internal/httpapi"
+	x402wrap "github.com/AxLabs/x402-go-server-example/internal/x402"
 )
 
 // newMockFacilitator stands up an httptest.Server that mimics the facilitator

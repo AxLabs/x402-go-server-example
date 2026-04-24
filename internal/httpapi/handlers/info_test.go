@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
+	"github.com/AxLabs/x402-go-server-example/internal/config"
 )
 
 func TestInfoHandler(t *testing.T) {
@@ -38,7 +38,7 @@ func TestInfoHandler(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if response.Service != "x402-paid-server-go" {
+	if response.Service != "x402-go-server-example" {
 		t.Errorf("expected service name, got %s", response.Service)
 	}
 	if response.FacilitatorURL != "http://test-facilitator:3000" {

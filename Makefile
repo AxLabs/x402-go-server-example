@@ -6,9 +6,9 @@ BUILD_DIR := bin
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_TIME := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
-LDFLAGS := -ldflags "-X github.com/bane-labs-org/x402-paid-server-go/internal/version.Version=$(VERSION) \
-                     -X github.com/bane-labs-org/x402-paid-server-go/internal/version.Commit=$(COMMIT) \
-                     -X github.com/bane-labs-org/x402-paid-server-go/internal/version.BuildTime=$(BUILD_TIME)"
+LDFLAGS := -ldflags "-X github.com/AxLabs/x402-go-server-example/internal/version.Version=$(VERSION) \
+                     -X github.com/AxLabs/x402-go-server-example/internal/version.Commit=$(COMMIT) \
+                     -X github.com/AxLabs/x402-go-server-example/internal/version.BuildTime=$(BUILD_TIME)"
 
 # Go commands
 GO := go
@@ -22,7 +22,7 @@ GOMOD := $(GO) mod
 
 ## help: Show this help message
 help:
-	@echo "x402-paid-server-go"
+	@echo "x402-go-server-example"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make <target>"

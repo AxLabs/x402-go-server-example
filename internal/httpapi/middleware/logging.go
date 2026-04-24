@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/logging"
+	"github.com/AxLabs/x402-go-server-example/internal/logging"
 	"github.com/google/uuid"
 )
 

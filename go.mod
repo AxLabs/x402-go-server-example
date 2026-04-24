@@ -1,4 +1,4 @@
-module github.com/bane-labs-org/x402-paid-server-go
+module github.com/AxLabs/x402-go-server-example
 
 go 1.24.0
 

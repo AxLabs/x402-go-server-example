@@ -1,4 +1,4 @@
-// Package main is the entry point for the x402-paid-server-go application.
+// Package main is the entry point for the x402-go-server-example application.
 package main
 
 import (
@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/httpapi"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/logging"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/version"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/x402"
+	"github.com/AxLabs/x402-go-server-example/internal/config"
+	"github.com/AxLabs/x402-go-server-example/internal/httpapi"
+	"github.com/AxLabs/x402-go-server-example/internal/logging"
+	"github.com/AxLabs/x402-go-server-example/internal/version"
+	"github.com/AxLabs/x402-go-server-example/internal/x402"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	logger := logging.NewLogger(cfg.LogLevel)
 
 	vInfo := version.Info()
-	logger.Info("starting x402-paid-server-go",
+	logger.Info("starting x402-go-server-example",
 		"version", vInfo.Version,
 		"commit", vInfo.Commit,
 		"build_time", vInfo.BuildTime,

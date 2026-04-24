@@ -8,10 +8,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	x402core "github.com/x402-foundation/x402/go"
 
-	"github.com/bane-labs-org/x402-paid-server-go/internal/config"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/httpapi/handlers"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/httpapi/middleware"
-	"github.com/bane-labs-org/x402-paid-server-go/internal/x402"
+	"github.com/AxLabs/x402-go-server-example/internal/config"
+	"github.com/AxLabs/x402-go-server-example/internal/httpapi/handlers"
+	"github.com/AxLabs/x402-go-server-example/internal/httpapi/middleware"
+	"github.com/AxLabs/x402-go-server-example/internal/x402"
 )
 
 // RouterConfig holds dependencies for creating the router.
