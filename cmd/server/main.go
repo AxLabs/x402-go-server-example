@@ -29,7 +29,9 @@ func main() {
 		"version", vInfo.Version,
 		"commit", vInfo.Commit,
 		"build_time", vInfo.BuildTime,
-		"network", cfg.Payment.Network,
+		"network_name", cfg.Network.Name,
+		"chain_id", cfg.Network.ChainID,
+		"payment_network", cfg.Payment.Network,
 		"facilitator_url", cfg.Facilitator.BaseURL,
 		"pay_to", cfg.Payment.PayToAddress,
 	)

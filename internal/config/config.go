@@ -4,6 +4,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -12,6 +14,7 @@ type Config struct {
 	Server      ServerConfig
 	LogLevel    string
 	Facilitator FacilitatorConfig
+	Network     NetworkConfig
 	Payment     PaymentConfig
 }
 
@@ -36,6 +39,24 @@ type FacilitatorConfig struct {
 	Timeout time.Duration
 }
 
+// NetworkConfig holds chain profile settings used by this server.
+type NetworkConfig struct {
+	// Name is a human-readable profile id, e.g. "neo-x-testnet".
+	Name string
+
+	// ChainID is the EVM chain id string, e.g. "12227332".
+	ChainID string
+
+	// RPCURL is the RPC endpoint for the selected network.
+	RPCURL string
+
+	// ExplorerURL is the block explorer base URL for the selected network.
+	ExplorerURL string
+
+	// PaymentAsset is the expected payment asset symbol or address label.
+	PaymentAsset string
+}
+
 // PaymentConfig holds payment-related configuration.
 //
 // Values are passed directly to the x402 SDK when building RoutesConfig /
@@ -43,7 +64,8 @@ type FacilitatorConfig struct {
 // against the supported asset kinds returned by the facilitator, so this
 // service no longer hard-codes chain IDs or asset addresses.
 type PaymentConfig struct {
-	// Network is the CAIP-2 network identifier (e.g. "eip155:84532" for Base Sepolia).
+	// Network is the CAIP-2 network identifier passed to the SDK. By default it
+	// is derived from CHAIN_ID as eip155:<chain-id>.
 	Network string
 
 	// PayToAddress is the seller's wallet address that receives payments.
@@ -72,10 +94,24 @@ func Load() (*Config, error) {
 
 	cfg.LogLevel = getEnvOrDefault("LOG_LEVEL", "info")
 
+	// Active default: Base Sepolia (temporary, for go-ethereum v1.16 compatibility).
+	// Prepared profile: Neo X Testnet (NETWORK_NAME=neo-x-testnet, CHAIN_ID=12227332,
+	//   RPC_URL=https://neoxt4seed1.ngd.network, EXPLORER_URL=https://xt4scan.ngd.network,
+	//   PAYMENT_ASSET=USDC). Switch back by setting these env vars once Neo X supports
+	//   go-ethereum v1.16.
+	cfg.Network.Name = getEnvOrDefault("NETWORK_NAME", "base-sepolia")
+	cfg.Network.ChainID = getEnvOrDefault("CHAIN_ID", "84532")
+	cfg.Network.RPCURL = getEnvOrDefault("RPC_URL", "https://sepolia.base.org")
+	cfg.Network.ExplorerURL = getEnvOrDefault("EXPLORER_URL", "https://sepolia.basescan.org")
+	cfg.Network.PaymentAsset = getEnvOrDefault("PAYMENT_ASSET", "USDC")
+
 	cfg.Facilitator.BaseURL = getEnvOrDefault("FACILITATOR_BASE_URL", "https://x402.org/facilitator")
 	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 30*time.Second)
 
-	cfg.Payment.Network = getEnvOrDefault("PAYMENT_NETWORK", "eip155:84532")
+	cfg.Payment.Network = deriveCAIP2Network(cfg.Network.ChainID)
+	if paymentNetwork := os.Getenv("PAYMENT_NETWORK"); paymentNetwork != "" {
+		cfg.Payment.Network = paymentNetwork
+	}
 	cfg.Payment.PayToAddress = os.Getenv("PAY_TO_ADDRESS")
 	cfg.Payment.PaidHelloPrice = getEnvOrDefault("PAID_HELLO_PRICE", "$0.01")
 	cfg.Payment.PaidEchoPrice = getEnvOrDefault("PAID_ECHO_PRICE", "$0.005")
@@ -90,6 +126,24 @@ func Load() (*Config, error) {
 
 // Validate validates the configuration.
 func (c *Config) Validate() error {
+	if c.Network.Name == "" {
+		return fmt.Errorf("NETWORK_NAME is required")
+	}
+	if c.Network.ChainID == "" {
+		return fmt.Errorf("CHAIN_ID is required")
+	}
+	if _, err := strconv.ParseUint(c.Network.ChainID, 10, 64); err != nil {
+		return fmt.Errorf("CHAIN_ID must be numeric")
+	}
+	if c.Network.RPCURL == "" {
+		return fmt.Errorf("RPC_URL is required")
+	}
+	if c.Network.ExplorerURL == "" {
+		return fmt.Errorf("EXPLORER_URL is required")
+	}
+	if c.Network.PaymentAsset == "" {
+		return fmt.Errorf("PAYMENT_ASSET is required")
+	}
 	if c.Payment.PayToAddress == "" {
 		return fmt.Errorf("PAY_TO_ADDRESS is required")
 	}
@@ -122,4 +176,12 @@ func parseDurationOrDefault(key string, defaultValue time.Duration) time.Duratio
 		}
 	}
 	return defaultValue
+}
+
+func deriveCAIP2Network(chainID string) string {
+	trimmed := strings.TrimSpace(chainID)
+	if trimmed == "" {
+		return ""
+	}
+	return "eip155:" + trimmed
 }

@@ -11,7 +11,11 @@ func TestLoad(t *testing.T) {
 		"SERVER_ADDR":          ":9090",
 		"LOG_LEVEL":            "debug",
 		"FACILITATOR_BASE_URL": "http://test-facilitator:3000",
-		"PAYMENT_NETWORK":      "eip155:1",
+		"NETWORK_NAME":         "ethereum-mainnet",
+		"CHAIN_ID":             "1",
+		"RPC_URL":              "https://eth.example",
+		"EXPLORER_URL":         "https://etherscan.io",
+		"PAYMENT_ASSET":        "USDC",
 		"PAY_TO_ADDRESS":       "0x1234567890abcdef",
 		"PAID_HELLO_PRICE":     "$0.02",
 		"PAID_ECHO_PRICE":      "$0.01",
@@ -42,6 +46,21 @@ func TestLoad(t *testing.T) {
 	}
 	if cfg.Facilitator.BaseURL != "http://test-facilitator:3000" {
 		t.Errorf("expected facilitator URL, got %s", cfg.Facilitator.BaseURL)
+	}
+	if cfg.Network.Name != "ethereum-mainnet" {
+		t.Errorf("expected network name ethereum-mainnet, got %s", cfg.Network.Name)
+	}
+	if cfg.Network.ChainID != "1" {
+		t.Errorf("expected chain id 1, got %s", cfg.Network.ChainID)
+	}
+	if cfg.Network.RPCURL != "https://eth.example" {
+		t.Errorf("expected rpc url https://eth.example, got %s", cfg.Network.RPCURL)
+	}
+	if cfg.Network.ExplorerURL != "https://etherscan.io" {
+		t.Errorf("expected explorer url https://etherscan.io, got %s", cfg.Network.ExplorerURL)
+	}
+	if cfg.Network.PaymentAsset != "USDC" {
+		t.Errorf("expected payment asset USDC, got %s", cfg.Network.PaymentAsset)
 	}
 	if cfg.Payment.Network != "eip155:1" {
 		t.Errorf("expected network eip155:1, got %s", cfg.Payment.Network)
@@ -77,8 +96,23 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.LogLevel != "info" {
 		t.Errorf("expected default log level info, got %s", cfg.LogLevel)
 	}
+	if cfg.Network.Name != "base-sepolia" {
+		t.Errorf("expected default network name base-sepolia, got %s", cfg.Network.Name)
+	}
+	if cfg.Network.ChainID != "84532" {
+		t.Errorf("expected default chain id 84532, got %s", cfg.Network.ChainID)
+	}
 	if cfg.Payment.Network != "eip155:84532" {
 		t.Errorf("expected default network eip155:84532, got %s", cfg.Payment.Network)
+	}
+	if cfg.Network.RPCURL != "https://sepolia.base.org" {
+		t.Errorf("expected default rpc url, got %s", cfg.Network.RPCURL)
+	}
+	if cfg.Network.ExplorerURL != "https://sepolia.basescan.org" {
+		t.Errorf("expected default explorer url, got %s", cfg.Network.ExplorerURL)
+	}
+	if cfg.Network.PaymentAsset != "USDC" {
+		t.Errorf("expected default payment asset USDC, got %s", cfg.Network.PaymentAsset)
 	}
 	if cfg.Payment.PaidHelloPrice != "$0.01" {
 		t.Errorf("expected default hello price $0.01, got %s", cfg.Payment.PaidHelloPrice)
@@ -88,6 +122,25 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if cfg.Facilitator.BaseURL != "https://x402.org/facilitator" {
 		t.Errorf("expected default facilitator URL, got %s", cfg.Facilitator.BaseURL)
+	}
+}
+
+func TestLoadPaymentNetworkOverride(t *testing.T) {
+	cleanup := setTestEnv(t, map[string]string{
+		"PAY_TO_ADDRESS":       "0xdefault",
+		"CHAIN_ID":             "12227332",
+		"PAYMENT_NETWORK":      "eip155:84532",
+		"FACILITATOR_BASE_URL": "http://test-facilitator:3000",
+	})
+	defer cleanup()
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Payment.Network != "eip155:84532" {
+		t.Errorf("expected override network eip155:84532, got %s", cfg.Payment.Network)
 	}
 }
 
@@ -101,6 +154,14 @@ func TestLoadValidationErrors(t *testing.T) {
 			name:    "missing PAY_TO_ADDRESS",
 			env:     map[string]string{},
 			wantErr: "PAY_TO_ADDRESS is required",
+		},
+		{
+			name: "invalid CHAIN_ID",
+			env: map[string]string{
+				"PAY_TO_ADDRESS": "0xdefault",
+				"CHAIN_ID":       "abc",
+			},
+			wantErr: "CHAIN_ID must be numeric",
 		},
 	}
 
@@ -125,11 +186,10 @@ func setTestEnv(t *testing.T, env map[string]string) func() {
 	t.Helper()
 
 	envKeys := []string{
-		"SERVER_ADDR", "LOG_LEVEL", "FACILITATOR_BASE_URL",
-		"PAYMENT_NETWORK", "PAY_TO_ADDRESS",
-		"PAID_HELLO_PRICE", "PAID_ECHO_PRICE", "READ_TIMEOUT",
-		"WRITE_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT",
-		"FACILITATOR_TIMEOUT", "PAYMENT_MAX_TIMEOUT",
+		"SERVER_ADDR", "LOG_LEVEL", "FACILITATOR_BASE_URL", "FACILITATOR_TIMEOUT",
+		"NETWORK_NAME", "CHAIN_ID", "RPC_URL", "EXPLORER_URL", "PAYMENT_ASSET", "PAYMENT_NETWORK",
+		"PAY_TO_ADDRESS", "PAID_HELLO_PRICE", "PAID_ECHO_PRICE", "READ_TIMEOUT",
+		"WRITE_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT", "PAYMENT_MAX_TIMEOUT",
 	}
 
 	original := make(map[string]string)

@@ -25,6 +25,11 @@ type InfoResponse struct {
 	BuildTime      string      `json:"buildTime"`
 	FacilitatorURL string      `json:"facilitatorUrl"`
 	Network        string      `json:"network"`
+	NetworkName    string      `json:"networkName"`
+	ChainID        string      `json:"chainId"`
+	RPCURL         string      `json:"rpcUrl"`
+	ExplorerURL    string      `json:"explorerUrl"`
+	PaymentAsset   string      `json:"paymentAsset"`
 	Scheme         string      `json:"scheme"`
 	PayTo          string      `json:"payToAddress"`
 	Pricing        PricingInfo `json:"pricing"`
@@ -53,6 +58,11 @@ func (h *InfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		BuildTime:      vInfo.BuildTime,
 		FacilitatorURL: h.cfg.Facilitator.BaseURL,
 		Network:        h.cfg.Payment.Network,
+		NetworkName:    h.cfg.Network.Name,
+		ChainID:        h.cfg.Network.ChainID,
+		RPCURL:         h.cfg.Network.RPCURL,
+		ExplorerURL:    h.cfg.Network.ExplorerURL,
+		PaymentAsset:   h.cfg.Network.PaymentAsset,
 		Scheme:         "exact",
 		PayTo:          h.cfg.Payment.PayToAddress,
 		Pricing: PricingInfo{

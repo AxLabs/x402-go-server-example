@@ -1,6 +1,6 @@
 # Architecture
 
-`x402-go-server-example` is a deliberately thin wrapper around the [x402 Go SDK](https://github.com/x402-foundation/x402/go). The goal is that everything protocol-related is delegated to the SDK, and this repo only owns the operational concerns every HTTP service has: configuration, logging, routing, health, and info.
+`x402-go-server-example` is a deliberately thin wrapper around the [x402 Go SDK](https://github.com/x402-foundation/x402/go). Everything protocol-related is delegated to the SDK, and this repo owns only operational concerns common to HTTP services: configuration, logging, routing, health, and info.
 
 ## Layer diagram
 
@@ -41,7 +41,7 @@
                               │
                               ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│ x402 Go SDK (github.com/x402-foundation/x402/go)                  │
+│ x402 Go SDK (github.com/x402-foundation/x402/go)                 │
 │   • parses PAYMENT-SIGNATURE                                      │
 │   • builds 402 / PAYMENT-REQUIRED                                 │
 │   • verifies signatures via EVM exact scheme                      │
@@ -60,8 +60,8 @@
 ### `internal/config`
 
 - Reads environment variables (with defaults).
-- Validates required fields (`PAY_TO_ADDRESS`, prices, network, facilitator URL).
-- Uses USD price strings and CAIP-2 networks so that nothing in this repo has to know about stablecoin contract addresses; the SDK resolves those through the facilitator's `/supported` response.
+- Validates required fields (`PAY_TO_ADDRESS`, prices, network profile, facilitator URL).
+- Keeps network differences in config (`NETWORK_NAME`, `CHAIN_ID`, `RPC_URL`, `EXPLORER_URL`, `PAYMENT_ASSET`) and derives SDK CAIP-2 network values from `CHAIN_ID`.
 
 ### `internal/logging`
 
@@ -72,32 +72,32 @@
 
 - The **only** package in the repo that imports the SDK.
 - Exposes `Config`, `RouteSpec`, and `Middleware(Config) (func(http.Handler) http.Handler, error)`.
-- Validates inputs and translates our `RouteSpec` list into the SDK's `x402http.RoutesConfig`.
+- Validates inputs and translates our `RouteSpec` list into the SDK `x402http.RoutesConfig`.
 
 ### `internal/httpapi`
 
-- `router.go` builds the chi router and plugs the SDK middleware onto the `/paid` subrouter via `r.Use(cfg.X402Middleware)`.
+- `router.go` builds the chi router and plugs SDK middleware onto `/paid` via `r.Use(cfg.X402Middleware)`.
 - `middleware/` contains request-id and request-logging middleware.
-- `handlers/` contains **protocol-agnostic** handlers. They do not import the SDK and do not touch any payment-related context keys.
+- `handlers/` contains protocol-agnostic handlers that do not import the SDK and do not touch payment context keys.
 
 ### `test/`
 
-- Integration tests that build the full router against a mock facilitator (serving `/supported`, `/verify`, `/settle`) and assert:
+- Integration tests build the full router against a mock facilitator (`/supported`, `/verify`, `/settle`) and assert:
 
   - unpaid routes return 200,
-  - paid routes return the SDK-issued 402 with `PAYMENT-REQUIRED`,
-  - unknown routes return a JSON 404.
+  - paid routes return SDK-issued 402 with `PAYMENT-REQUIRED`,
+  - unknown routes return JSON 404.
 
 ## Design decisions
 
-- **No custom x402 code.** Hand-rolling the protocol duplicates work the SDK already does and invites bugs on every spec change. The `internal/x402` package is a ~50-line factory and nothing more.
-- **Handlers are ignorant of x402.** If the SDK middleware invokes a handler, payment already succeeded; the SDK writes `PAYMENT-RESPONSE` on the response after the handler returns. Handlers just write their JSON body.
-- **USD pricing.** Prices are USD strings such as `$0.01`. The SDK maps these to on-chain amounts using the facilitator's supported kinds. This keeps `.env.example` readable and portable across networks.
-- **CAIP-2 networks.** `eip155:84532` (Base Sepolia) is the default because the SDK ships a default stablecoin parser for it; production deployments typically override to `eip155:8453` (Base mainnet) or similar.
+- **No custom x402 code.** Hand-rolling protocol behavior duplicates SDK logic and creates spec-drift risk.
+- **Handlers are x402-agnostic.** If SDK middleware invokes a handler, payment checks have already passed; SDK writes `PAYMENT-RESPONSE` after handler execution.
+- **Config-driven network selection.** Base Sepolia is the current default profile (`CHAIN_ID=84532` -> `eip155:84532`) due to go-ethereum v1.16 compatibility. Neo X Testnet (`CHAIN_ID=12227332` -> `eip155:12227332`) is the intended primary profile and remains fully prepared in configuration — switching back requires only changing environment variables.
+- **USD pricing.** Prices stay as readable USD strings (for example `$0.01`) and are resolved by the SDK using facilitator-supported kinds.
 
 ## What is deliberately absent
 
-- No custom `X-Payment` / `X-Payment-Required` headers; the SDK uses `PAYMENT-SIGNATURE` / `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE`.
+- No custom `X-Payment` / `X-Payment-Required` headers; SDK uses `PAYMENT-SIGNATURE` / `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE`.
 - No hand-written facilitator client; `x402http.HTTPFacilitatorClient` is used directly.
-- No verify/settle orchestration; `nethttp.X402Payment` does this.
-- No payment models in `internal/`; the SDK's types are used where needed (and nowhere else, since handlers don't need them).
+- No verify/settle orchestration; `nethttp.X402Payment` handles it.
+- No duplicated payment models in `internal/`; SDK types are used where needed.

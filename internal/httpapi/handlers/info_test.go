@@ -14,8 +14,15 @@ func TestInfoHandler(t *testing.T) {
 		Facilitator: config.FacilitatorConfig{
 			BaseURL: "http://test-facilitator:3000",
 		},
+		Network: config.NetworkConfig{
+			Name:         "neox-testnet",
+			ChainID:      "12227332",
+			RPCURL:       "https://neoxt4seed1.ngd.network",
+			ExplorerURL:  "https://xt4scan.ngd.network",
+			PaymentAsset: "USDC",
+		},
 		Payment: config.PaymentConfig{
-			Network:        "eip155:84532",
+			Network:        "eip155:12227332",
 			PayToAddress:   "0xpayto",
 			PaidHelloPrice: "$0.01",
 			PaidEchoPrice:  "$0.005",
@@ -44,8 +51,23 @@ func TestInfoHandler(t *testing.T) {
 	if response.FacilitatorURL != "http://test-facilitator:3000" {
 		t.Errorf("expected facilitator URL, got %s", response.FacilitatorURL)
 	}
-	if response.Network != "eip155:84532" {
-		t.Errorf("expected network eip155:84532, got %s", response.Network)
+	if response.Network != "eip155:12227332" {
+		t.Errorf("expected network eip155:12227332, got %s", response.Network)
+	}
+	if response.NetworkName != "neox-testnet" {
+		t.Errorf("expected network name neox-testnet, got %s", response.NetworkName)
+	}
+	if response.ChainID != "12227332" {
+		t.Errorf("expected chain id 12227332, got %s", response.ChainID)
+	}
+	if response.RPCURL != "https://neoxt4seed1.ngd.network" {
+		t.Errorf("expected rpc url https://neoxt4seed1.ngd.network, got %s", response.RPCURL)
+	}
+	if response.ExplorerURL != "https://xt4scan.ngd.network" {
+		t.Errorf("expected explorer url https://xt4scan.ngd.network, got %s", response.ExplorerURL)
+	}
+	if response.PaymentAsset != "USDC" {
+		t.Errorf("expected payment asset USDC, got %s", response.PaymentAsset)
 	}
 	if response.Scheme != "exact" {
 		t.Errorf("expected scheme exact, got %s", response.Scheme)
