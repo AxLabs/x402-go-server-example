@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -162,6 +163,24 @@ func TestLoadInvalidPaymentFile(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestLoadInvalidPaymentYAML(t *testing.T) {
+	paymentFile := writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:47763\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n\tpayTo: 0x1111111111111111111111111111111111111111\n")
+
+	cleanup := setTestEnv(t, map[string]string{
+		"FACILITATOR_BASE_URL": "http://facilitator:3000",
+		"PAYMENT_CONFIG_FILE":  paymentFile,
+	})
+	defer cleanup()
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "PAYMENT_CONFIG_FILE: invalid YAML:") {
+		t.Fatalf("expected invalid YAML error, got %v", err)
 	}
 }
 
@@ -397,18 +416,7 @@ func TestLoadValidationErrors(t *testing.T) {
 			name: "invalid accept payTo address",
 			env: map[string]string{
 				"FACILITATOR_BASE_URL": "http://facilitator:3000",
-				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
-  routes:
-    - method: GET
-      path: /paid/hello
-      handler: paid_hello
-      accepts:
-        - scheme: exact
-          network: eip155:47763
-          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
-          amount: "100"
-          payTo: 0xtest
-`),
+				"PAYMENT_CONFIG_FILE":  writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:47763\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n          payTo: \"0x123\"\n"),
 			},
 			wantErr: "payment.routes[0].accepts[0].payTo must be a valid EVM address",
 		},

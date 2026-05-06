@@ -57,6 +57,16 @@ func PaidRoutes(cfg *config.Config) []x402.RouteSpec {
 
 // NewRouter creates and configures the HTTP router.
 func NewRouter(cfg RouterConfig) (http.Handler, error) {
+	if cfg.Config == nil {
+		return nil, fmt.Errorf("router config is required")
+	}
+	if cfg.Logger == nil {
+		cfg.Logger = slog.Default()
+	}
+	if err := config.ValidatePaymentRoutes(cfg.Config.Payment.Routes); err != nil {
+		return nil, err
+	}
+
 	r := chi.NewRouter()
 
 	// Global middleware (not x402-related).
@@ -74,9 +84,6 @@ func NewRouter(cfg RouterConfig) (http.Handler, error) {
 	// ProcessSettlement and appends the PAYMENT-RESPONSE header.
 	for i := range cfg.Config.Payment.Routes {
 		paidRoute := cfg.Config.Payment.Routes[i]
-		if isReservedPublicRoute(paidRoute.Method, paidRoute.Path) {
-			return nil, fmt.Errorf("payment.routes[%d] cannot use reserved public route: %s %s", i, paidRoute.Method, paidRoute.Path)
-		}
 		handler, err := paidRouteHandler(paidRoute.Handler)
 		if err != nil {
 			return nil, fmt.Errorf("payment.routes[%d]: %w", i, err)
@@ -110,8 +117,4 @@ func paidRouteHandler(name string) (http.Handler, error) {
 	default:
 		return nil, fmt.Errorf("unsupported handler %q", name)
 	}
-}
-
-func isReservedPublicRoute(method, path string) bool {
-	return (method == http.MethodGet && path == "/healthz") || (method == http.MethodGet && path == "/info")
 }

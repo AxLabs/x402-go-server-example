@@ -11,6 +11,19 @@ import (
 	"github.com/AxLabs/x402-go-server-example/internal/config"
 )
 
+func testAccept() []config.PaymentAccept {
+	return []config.PaymentAccept{
+		{
+			Scheme:            "exact",
+			Network:           "eip155:84532",
+			Asset:             "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+			Amount:            "10000",
+			PayTo:             "0x1111111111111111111111111111111111111111",
+			MaxTimeoutSeconds: 300,
+		},
+	}
+}
+
 func TestNewRouter_RegistersConfiguredPaidRoutes(t *testing.T) {
 	cfg := &config.Config{
 		Payment: config.PaymentConfig{
@@ -19,11 +32,13 @@ func TestNewRouter_RegistersConfiguredPaidRoutes(t *testing.T) {
 					Method:  "GET",
 					Path:    "/paid/hello",
 					Handler: config.PaidHandlerHello,
+					Accepts: testAccept(),
 				},
 				{
 					Method:  "POST",
 					Path:    "/paid/echo",
 					Handler: config.PaidHandlerEcho,
+					Accepts: testAccept(),
 				},
 			},
 		},
@@ -74,6 +89,7 @@ func TestNewRouter_InvalidHandlerFails(t *testing.T) {
 					Method:  "GET",
 					Path:    "/paid/hello",
 					Handler: "not_supported",
+					Accepts: testAccept(),
 				},
 			},
 		},
@@ -83,7 +99,7 @@ func TestNewRouter_InvalidHandlerFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "unsupported handler") {
+	if !strings.Contains(err.Error(), "must be one of: paid_hello, paid_echo") {
 		t.Fatalf("expected unsupported handler error, got %v", err)
 	}
 }
@@ -96,6 +112,7 @@ func TestNewRouter_ReservedRouteFails(t *testing.T) {
 					Method:  "GET",
 					Path:    "/healthz",
 					Handler: config.PaidHandlerHello,
+					Accepts: testAccept(),
 				},
 			},
 		},
@@ -107,5 +124,51 @@ func TestNewRouter_ReservedRouteFails(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "cannot use reserved public route") {
 		t.Fatalf("expected reserved route error, got %v", err)
+	}
+}
+
+func TestNewRouter_InvalidMethodFails(t *testing.T) {
+	cfg := &config.Config{
+		Payment: config.PaymentConfig{
+			Routes: []config.PaymentRoute{
+				{
+					Method:  "TRACE",
+					Path:    "/paid/hello",
+					Handler: config.PaidHandlerHello,
+					Accepts: testAccept(),
+				},
+			},
+		},
+	}
+
+	_, err := NewRouter(RouterConfig{Config: cfg})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "method must be one of") {
+		t.Fatalf("expected invalid method error, got %v", err)
+	}
+}
+
+func TestNewRouter_InvalidPathFails(t *testing.T) {
+	cfg := &config.Config{
+		Payment: config.PaymentConfig{
+			Routes: []config.PaymentRoute{
+				{
+					Method:  "GET",
+					Path:    "paid/hello",
+					Handler: config.PaidHandlerHello,
+					Accepts: testAccept(),
+				},
+			},
+		},
+	}
+
+	_, err := NewRouter(RouterConfig{Config: cfg})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "path must start with /") {
+		t.Fatalf("expected invalid path error, got %v", err)
 	}
 }

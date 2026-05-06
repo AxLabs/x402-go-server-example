@@ -41,7 +41,7 @@
 ┌───────────────────────────────────────────────────────────────────┐
 │ x402 Go SDK (github.com/x402-foundation/x402/go)                  │
 │   • parses PAYMENT-SIGNATURE                                      │
-│   • builds 402 / PAYMENT-REQUIRED                                 │
+│   • builds 402 / PAYMENT-REQUIRED (base64-encoded JSON challenge) │
 │   • verifies signatures via EVM exact scheme                      │
 │   • calls facilitator /verify and /settle                         │
 │   • writes PAYMENT-RESPONSE on success                            │

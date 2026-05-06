@@ -57,7 +57,7 @@ Run this repo as the seller server:
 ```bash
 cp .env.example .env
 # edit .env: set FACILITATOR_BASE_URL and PAYMENT_CONFIG_FILE
-# edit payment-config.example.yaml with your real addresses/amounts
+# edit payment-config.example.yaml (or payment-config.testnet.yaml) with your real addresses/amounts
 make run
 ```
 
@@ -145,6 +145,8 @@ payment:
 ```
 
 `handler` is required per route and must be one of `paid_hello` or `paid_echo`. `scheme` is currently constrained to `exact`.
+
+For a runnable Neo X Testnet profile, use [payment-config.testnet.yaml](payment-config.testnet.yaml) and `.env.testnet`.
 
 ---
 

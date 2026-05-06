@@ -81,6 +81,15 @@ type paymentFileConfig struct {
 var (
 	evmAddressRe      = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
 	evmCAIP2NetworkRe = regexp.MustCompile(`^eip155:[0-9]+$`)
+	allowedMethods    = map[string]struct{}{
+		"GET":     {},
+		"POST":    {},
+		"PUT":     {},
+		"PATCH":   {},
+		"DELETE":  {},
+		"HEAD":    {},
+		"OPTIONS": {},
+	}
 )
 
 const maxAcceptTimeoutSeconds = 3600
@@ -135,21 +144,19 @@ func (c *Config) Validate() error {
 	if c.Facilitator.BaseURL == "" {
 		return fmt.Errorf("FACILITATOR_BASE_URL is required")
 	}
-	if len(c.Payment.Routes) == 0 {
+	return ValidatePaymentRoutes(c.Payment.Routes)
+}
+
+// ValidatePaymentRoutes validates paid route configuration.
+//
+// It normalizes route methods to uppercase and handler/scheme values to lowercase.
+func ValidatePaymentRoutes(routes []PaymentRoute) error {
+	if len(routes) == 0 {
 		return fmt.Errorf("payment.routes must include at least one route")
 	}
-	seen := make(map[string]struct{}, len(c.Payment.Routes))
-	allowedMethods := map[string]struct{}{
-		"GET":     {},
-		"POST":    {},
-		"PUT":     {},
-		"PATCH":   {},
-		"DELETE":  {},
-		"HEAD":    {},
-		"OPTIONS": {},
-	}
-	for i := range c.Payment.Routes {
-		r := &c.Payment.Routes[i]
+	seen := make(map[string]struct{}, len(routes))
+	for i := range routes {
+		r := &routes[i]
 		if r.Method == "" {
 			return fmt.Errorf("payment.routes[%d].method is required", i)
 		}

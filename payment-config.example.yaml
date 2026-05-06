@@ -1,4 +1,7 @@
 payment:
+  # This example intentionally demonstrates multi-network accepts on one route
+  # (Base Sepolia + Neo X Testnet). Use payment-config.testnet.yaml for a
+  # runnable Neo X Testnet-only profile.
   routes:
     - method: GET
       path: /paid/hello

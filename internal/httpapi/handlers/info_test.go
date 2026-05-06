@@ -22,7 +22,7 @@ func TestInfoHandler(t *testing.T) {
 					Handler:     config.PaidHandlerHello,
 					Description: "Paid hello resource",
 					Accepts: []config.PaymentAccept{
-						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "10000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
+						{Scheme: "exact", Network: "eip155:84532", Asset: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", Amount: "10000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300},
 					},
 				},
 				{
@@ -31,7 +31,7 @@ func TestInfoHandler(t *testing.T) {
 					Handler:     config.PaidHandlerEcho,
 					Description: "Paid echo resource",
 					Accepts: []config.PaymentAccept{
-						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "5000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
+						{Scheme: "exact", Network: "eip155:84532", Asset: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", Amount: "5000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300},
 					},
 				},
 			},
@@ -72,8 +72,8 @@ func TestInfoHandler(t *testing.T) {
 	if len(response.Pricing.Routes[0].Accepts) != 1 {
 		t.Fatalf("expected 1 accept on /paid/hello, got %d", len(response.Pricing.Routes[0].Accepts))
 	}
-	if response.Pricing.Routes[0].Accepts[0].Asset != "0xAsset1" {
-		t.Errorf("expected first route asset 0xAsset1, got %s", response.Pricing.Routes[0].Accepts[0].Asset)
+	if response.Pricing.Routes[0].Accepts[0].Asset != "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" {
+		t.Errorf("expected first route asset 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48, got %s", response.Pricing.Routes[0].Accepts[0].Asset)
 	}
 }
 
@@ -89,8 +89,8 @@ func TestInfoHandler_MultipleOptions(t *testing.T) {
 					Path:    "/paid/hello",
 					Handler: config.PaidHandlerHello,
 					Accepts: []config.PaymentAccept{
-						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "10000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
-						{Scheme: "exact", Network: "eip155:47763", Asset: "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE", Amount: "1000000000000000000", PayTo: "0xpayto", MaxTimeoutSeconds: 300, Extra: map[string]interface{}{"name": "xGAS", "version": "1"}},
+						{Scheme: "exact", Network: "eip155:84532", Asset: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", Amount: "10000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300},
+						{Scheme: "exact", Network: "eip155:47763", Asset: "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE", Amount: "1000000000000000000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300, Extra: map[string]interface{}{"name": "xGAS", "version": "1"}},
 					},
 				},
 				{
@@ -98,7 +98,7 @@ func TestInfoHandler_MultipleOptions(t *testing.T) {
 					Path:    "/paid/echo",
 					Handler: config.PaidHandlerEcho,
 					Accepts: []config.PaymentAccept{
-						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "5000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
+						{Scheme: "exact", Network: "eip155:84532", Asset: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", Amount: "5000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300},
 					},
 				},
 			},
