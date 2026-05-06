@@ -2,24 +2,48 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestLoad(t *testing.T) {
+	paymentFile := writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      description: Paid hello resource
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "1000000000000000000"
+          payTo: 0x1234567890abcdef
+          maxTimeoutSeconds: 120
+          extra:
+            name: xGAS
+            version: "1"
+            assetTransferMethod: eip3009
+    - method: post
+      path: /paid/echo
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "500000000000000000"
+          payTo: 0x1234567890abcdef
+`)
+
 	cleanup := setTestEnv(t, map[string]string{
 		"SERVER_ADDR":          ":9090",
 		"LOG_LEVEL":            "debug",
 		"FACILITATOR_BASE_URL": "http://test-facilitator:3000",
-		"PAYMENT_NETWORK":      "eip155:1",
-		"PAY_TO_ADDRESS":       "0x1234567890abcdef",
-		"PAID_HELLO_PRICE":     "$0.02",
-		"PAID_ECHO_PRICE":      "$0.01",
+		"FACILITATOR_TIMEOUT":  "45s",
+		"PAYMENT_CONFIG_FILE":  paymentFile,
 		"READ_TIMEOUT":         "20s",
 		"WRITE_TIMEOUT":        "25s",
-		"REQUEST_TIMEOUT":      "45s",
+		"REQUEST_TIMEOUT":      "35s",
 		"SHUTDOWN_TIMEOUT":     "60s",
-		"PAYMENT_MAX_TIMEOUT":  "120s",
 	})
 	defer cleanup()
 
@@ -37,32 +61,59 @@ func TestLoad(t *testing.T) {
 	if cfg.Server.WriteTimeout != 25*time.Second {
 		t.Errorf("expected write timeout 25s, got %v", cfg.Server.WriteTimeout)
 	}
+	if cfg.Server.RequestTimeout != 35*time.Second {
+		t.Errorf("expected request timeout 35s, got %v", cfg.Server.RequestTimeout)
+	}
+	if cfg.Server.ShutdownTimeout != 60*time.Second {
+		t.Errorf("expected shutdown timeout 60s, got %v", cfg.Server.ShutdownTimeout)
+	}
 	if cfg.LogLevel != "debug" {
 		t.Errorf("expected log level debug, got %s", cfg.LogLevel)
 	}
 	if cfg.Facilitator.BaseURL != "http://test-facilitator:3000" {
 		t.Errorf("expected facilitator URL, got %s", cfg.Facilitator.BaseURL)
 	}
-	if cfg.Payment.Network != "eip155:1" {
-		t.Errorf("expected network eip155:1, got %s", cfg.Payment.Network)
+	if cfg.Facilitator.Timeout != 45*time.Second {
+		t.Errorf("expected facilitator timeout 45s, got %v", cfg.Facilitator.Timeout)
 	}
-	if cfg.Payment.PayToAddress != "0x1234567890abcdef" {
-		t.Errorf("expected pay to address, got %s", cfg.Payment.PayToAddress)
+	if cfg.PaymentConfigFile != paymentFile {
+		t.Errorf("expected payment file %s, got %s", paymentFile, cfg.PaymentConfigFile)
 	}
-	if cfg.Payment.PaidHelloPrice != "$0.02" {
-		t.Errorf("expected hello price $0.02, got %s", cfg.Payment.PaidHelloPrice)
+	if len(cfg.Payment.Routes) != 2 {
+		t.Fatalf("expected 2 routes, got %d", len(cfg.Payment.Routes))
 	}
-	if cfg.Payment.PaidEchoPrice != "$0.01" {
-		t.Errorf("expected echo price $0.01, got %s", cfg.Payment.PaidEchoPrice)
+	if cfg.Payment.Routes[0].Method != "GET" {
+		t.Errorf("expected first method GET, got %s", cfg.Payment.Routes[0].Method)
 	}
-	if cfg.Payment.MaxTimeoutSeconds != 120 {
-		t.Errorf("expected max timeout 120, got %d", cfg.Payment.MaxTimeoutSeconds)
+	if cfg.Payment.Routes[1].Method != "POST" {
+		t.Errorf("expected second method POST after normalization, got %s", cfg.Payment.Routes[1].Method)
+	}
+	if len(cfg.Payment.Routes[0].Accepts) != 1 {
+		t.Fatalf("expected first route to have 1 accept, got %d", len(cfg.Payment.Routes[0].Accepts))
+	}
+	if cfg.Payment.Routes[0].Accepts[0].PayTo != "0x1234567890abcdef" {
+		t.Errorf("expected payTo in first accept, got %s", cfg.Payment.Routes[0].Accepts[0].PayTo)
+	}
+	if cfg.Payment.Routes[0].Accepts[0].Extra["assetTransferMethod"] != "eip3009" {
+		t.Errorf("expected extra.assetTransferMethod=eip3009, got %v", cfg.Payment.Routes[0].Accepts[0].Extra["assetTransferMethod"])
 	}
 }
 
 func TestLoadDefaults(t *testing.T) {
+	paymentFile := writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0xdefault
+`)
+
 	cleanup := setTestEnv(t, map[string]string{
-		"PAY_TO_ADDRESS":       "0xdefault",
+		"PAYMENT_CONFIG_FILE":  paymentFile,
 		"FACILITATOR_BASE_URL": "http://default-facilitator:3000",
 	})
 	defer cleanup()
@@ -78,37 +129,93 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.LogLevel != "info" {
 		t.Errorf("expected default log level info, got %s", cfg.LogLevel)
 	}
-	if cfg.Payment.Network != "eip155:84532" {
-		t.Errorf("expected default network eip155:84532, got %s", cfg.Payment.Network)
+	if cfg.Facilitator.Timeout != 30*time.Second {
+		t.Errorf("expected default facilitator timeout 30s, got %v", cfg.Facilitator.Timeout)
 	}
-	if cfg.Payment.PaidHelloPrice != "$0.01" {
-		t.Errorf("expected default hello price $0.01, got %s", cfg.Payment.PaidHelloPrice)
+}
+
+func TestLoadRequiresPaymentConfigFile(t *testing.T) {
+	cleanup := setTestEnv(t, map[string]string{
+		"FACILITATOR_BASE_URL": "http://facilitator:3000",
+	})
+	defer cleanup()
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
-	if cfg.Payment.PaidEchoPrice != "$0.005" {
-		t.Errorf("expected default echo price $0.005, got %s", cfg.Payment.PaidEchoPrice)
+	if err.Error() != "PAYMENT_CONFIG_FILE is required" {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.Facilitator.BaseURL != "http://default-facilitator:3000" {
-		t.Errorf("expected facilitator URL from env, got %s", cfg.Facilitator.BaseURL)
+}
+
+func TestLoadInvalidPaymentFile(t *testing.T) {
+	cleanup := setTestEnv(t, map[string]string{
+		"FACILITATOR_BASE_URL": "http://facilitator:3000",
+		"PAYMENT_CONFIG_FILE":  filepath.Join(t.TempDir(), "missing.yaml"),
+	})
+	defer cleanup()
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
 
 func TestLoadValidationErrors(t *testing.T) {
+	basePaymentFile := writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0xabc
+`)
+
 	tests := []struct {
 		name    string
 		env     map[string]string
 		wantErr string
 	}{
 		{
-			name:    "missing PAY_TO_ADDRESS",
-			env:     map[string]string{},
-			wantErr: "PAY_TO_ADDRESS is required",
-		},
-		{
 			name: "missing FACILITATOR_BASE_URL",
 			env: map[string]string{
-				"PAY_TO_ADDRESS": "0x1234567890abcdef",
+				"PAYMENT_CONFIG_FILE": basePaymentFile,
 			},
 			wantErr: "FACILITATOR_BASE_URL is required",
+		},
+		{
+			name: "missing route accepts",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      accepts: []
+`),
+			},
+			wantErr: "payment.routes[0].accepts must include at least one option",
+		},
+		{
+			name: "missing accept payTo",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].payTo is required",
 		},
 	}
 
@@ -122,10 +229,20 @@ func TestLoadValidationErrors(t *testing.T) {
 				t.Fatal("expected error, got nil")
 			}
 			if err.Error() != tt.wantErr {
-				t.Errorf("expected error %q, got %q", tt.wantErr, err.Error())
+				t.Fatalf("expected %q, got %q", tt.wantErr, err.Error())
 			}
 		})
 	}
+}
+
+func writeTestPaymentConfig(t *testing.T, contents string) string {
+	t.Helper()
+	dir := t.TempDir()
+	file := filepath.Join(dir, "payment.yaml")
+	if err := os.WriteFile(file, []byte(contents), 0o644); err != nil {
+		t.Fatalf("write payment config: %v", err)
+	}
+	return file
 }
 
 // setTestEnv sets environment variables and returns a cleanup function.
@@ -134,10 +251,8 @@ func setTestEnv(t *testing.T, env map[string]string) func() {
 
 	envKeys := []string{
 		"SERVER_ADDR", "LOG_LEVEL", "FACILITATOR_BASE_URL",
-		"PAYMENT_NETWORK", "PAY_TO_ADDRESS",
-		"PAID_HELLO_PRICE", "PAID_ECHO_PRICE", "READ_TIMEOUT",
-		"WRITE_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT",
-		"FACILITATOR_TIMEOUT", "PAYMENT_MAX_TIMEOUT",
+		"READ_TIMEOUT", "WRITE_TIMEOUT", "REQUEST_TIMEOUT", "SHUTDOWN_TIMEOUT",
+		"FACILITATOR_TIMEOUT", "PAYMENT_CONFIG_FILE",
 	}
 
 	original := make(map[string]string)

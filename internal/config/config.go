@@ -4,15 +4,19 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Config holds all application configuration.
 type Config struct {
-	Server      ServerConfig
-	LogLevel    string
-	Facilitator FacilitatorConfig
-	Payment     PaymentConfig
+	Server            ServerConfig
+	LogLevel          string
+	Facilitator       FacilitatorConfig
+	PaymentConfigFile string
+	Payment           PaymentConfig
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -36,28 +40,32 @@ type FacilitatorConfig struct {
 	Timeout time.Duration
 }
 
-// PaymentConfig holds payment-related configuration.
-//
-// Values are passed directly to the x402 SDK when building RoutesConfig /
-// PaymentOptions. The SDK resolves human-readable USD prices (e.g. "$0.01")
-// against the supported asset kinds returned by the facilitator, so this
-// service no longer hard-codes chain IDs or asset addresses.
+// PaymentConfig mirrors x402 route accepts configuration.
 type PaymentConfig struct {
-	// Network is the CAIP-2 network identifier (e.g. "eip155:84532" for Base Sepolia).
-	Network string
+	Routes []PaymentRoute `json:"routes" yaml:"routes"`
+}
 
-	// PayToAddress is the seller's wallet address that receives payments.
-	PayToAddress string
+// PaymentRoute defines one paid route and its accepts list.
+type PaymentRoute struct {
+	Method      string          `json:"method" yaml:"method"`
+	Path        string          `json:"path" yaml:"path"`
+	Description string          `json:"description,omitempty" yaml:"description,omitempty"`
+	Accepts     []PaymentAccept `json:"accepts" yaml:"accepts"`
+}
 
-	// PaidHelloPrice is the price for GET /paid/hello, expressed as a USD
-	// string understood by the SDK (e.g. "$0.01").
-	PaidHelloPrice string
+// PaymentAccept mirrors x402 PaymentRequirements fields.
+type PaymentAccept struct {
+	Scheme            string                 `json:"scheme" yaml:"scheme"`
+	Network           string                 `json:"network" yaml:"network"`
+	Asset             string                 `json:"asset" yaml:"asset"`
+	Amount            string                 `json:"amount" yaml:"amount"`
+	PayTo             string                 `json:"payTo" yaml:"payTo"`
+	MaxTimeoutSeconds int                    `json:"maxTimeoutSeconds,omitempty" yaml:"maxTimeoutSeconds,omitempty"`
+	Extra             map[string]interface{} `json:"extra,omitempty" yaml:"extra,omitempty"`
+}
 
-	// PaidEchoPrice is the price for POST /paid/echo as a USD string.
-	PaidEchoPrice string
-
-	// MaxTimeoutSeconds is the maximum payment timeout advertised per route.
-	MaxTimeoutSeconds int
+type paymentFileConfig struct {
+	Payment PaymentConfig `yaml:"payment"`
 }
 
 // Load loads configuration from environment variables.
@@ -75,11 +83,28 @@ func Load() (*Config, error) {
 	cfg.Facilitator.BaseURL = os.Getenv("FACILITATOR_BASE_URL")
 	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 30*time.Second)
 
-	cfg.Payment.Network = getEnvOrDefault("PAYMENT_NETWORK", "eip155:84532")
-	cfg.Payment.PayToAddress = os.Getenv("PAY_TO_ADDRESS")
-	cfg.Payment.PaidHelloPrice = getEnvOrDefault("PAID_HELLO_PRICE", "$0.01")
-	cfg.Payment.PaidEchoPrice = getEnvOrDefault("PAID_ECHO_PRICE", "$0.005")
-	cfg.Payment.MaxTimeoutSeconds = int(parseDurationOrDefault("PAYMENT_MAX_TIMEOUT", 300*time.Second).Seconds())
+	cfg.PaymentConfigFile = os.Getenv("PAYMENT_CONFIG_FILE")
+	if cfg.PaymentConfigFile == "" {
+		return nil, fmt.Errorf("PAYMENT_CONFIG_FILE is required")
+	}
+
+	raw, err := os.ReadFile(cfg.PaymentConfigFile)
+	if err != nil {
+		return nil, fmt.Errorf("PAYMENT_CONFIG_FILE: read %q: %w", cfg.PaymentConfigFile, err)
+	}
+
+	var fileCfg paymentFileConfig
+	if err := yaml.Unmarshal(raw, &fileCfg); err != nil {
+		return nil, fmt.Errorf("PAYMENT_CONFIG_FILE: invalid YAML: %w", err)
+	}
+
+	cfg.Payment = fileCfg.Payment
+	if len(cfg.Payment.Routes) == 0 {
+		var direct PaymentConfig
+		if err := yaml.Unmarshal(raw, &direct); err == nil && len(direct.Routes) > 0 {
+			cfg.Payment = direct
+		}
+	}
 
 	if err := cfg.Validate(); err != nil {
 		return nil, err
@@ -90,20 +115,41 @@ func Load() (*Config, error) {
 
 // Validate validates the configuration.
 func (c *Config) Validate() error {
-	if c.Payment.PayToAddress == "" {
-		return fmt.Errorf("PAY_TO_ADDRESS is required")
-	}
-	if c.Payment.Network == "" {
-		return fmt.Errorf("PAYMENT_NETWORK is required")
-	}
-	if c.Payment.PaidHelloPrice == "" {
-		return fmt.Errorf("PAID_HELLO_PRICE is required")
-	}
-	if c.Payment.PaidEchoPrice == "" {
-		return fmt.Errorf("PAID_ECHO_PRICE is required")
-	}
 	if c.Facilitator.BaseURL == "" {
 		return fmt.Errorf("FACILITATOR_BASE_URL is required")
+	}
+	if len(c.Payment.Routes) == 0 {
+		return fmt.Errorf("payment.routes must include at least one route")
+	}
+	for i := range c.Payment.Routes {
+		r := &c.Payment.Routes[i]
+		if r.Method == "" {
+			return fmt.Errorf("payment.routes[%d].method is required", i)
+		}
+		r.Method = strings.ToUpper(r.Method)
+		if r.Path == "" {
+			return fmt.Errorf("payment.routes[%d].path is required", i)
+		}
+		if len(r.Accepts) == 0 {
+			return fmt.Errorf("payment.routes[%d].accepts must include at least one option", i)
+		}
+		for j, accept := range r.Accepts {
+			if accept.Scheme == "" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].scheme is required", i, j)
+			}
+			if accept.Network == "" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].network is required", i, j)
+			}
+			if accept.Asset == "" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].asset is required", i, j)
+			}
+			if accept.Amount == "" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].amount is required", i, j)
+			}
+			if accept.PayTo == "" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].payTo is required", i, j)
+			}
+		}
 	}
 	return nil
 }

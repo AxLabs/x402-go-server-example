@@ -30,8 +30,8 @@ What the SDK does here:
 
 1. Inspects `PAYMENT-SIGNATURE` and finds it missing.
 2. Looks up the route in its `RoutesConfig`.
-3. Builds a `PaymentRequirements` list using the `PaymentOption` we supplied (scheme=`exact`, network, payTo, price, timeout).
-4. Serializes that into the `PAYMENT-REQUIRED` response header and returns HTTP 402. The business handler is never invoked.
+4. Builds a `PaymentRequirements` list using all `PaymentOption` entries we supplied in the route's explicit `Accepts` array.
+4. Serializes that into the `PAYMENT-REQUIRED` response header and returns HTTP 402. The business handler is never invoked. The client picks one option from the `accepts` array to fulfill.
 
 ## Paid request — authenticated
 

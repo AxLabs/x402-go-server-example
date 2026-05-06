@@ -29,9 +29,9 @@ func main() {
 		"version", vInfo.Version,
 		"commit", vInfo.Commit,
 		"build_time", vInfo.BuildTime,
-		"network", cfg.Payment.Network,
 		"facilitator_url", cfg.Facilitator.BaseURL,
-		"pay_to", cfg.Payment.PayToAddress,
+		"payment_config_file", cfg.PaymentConfigFile,
+		"paid_routes", len(cfg.Payment.Routes),
 	)
 
 	// Build the SDK-backed x402 middleware. This constructs the SDK's
@@ -41,9 +41,6 @@ func main() {
 	mw, err := x402.Middleware(x402.Config{
 		FacilitatorURL:         cfg.Facilitator.BaseURL,
 		FacilitatorTimeout:     cfg.Facilitator.Timeout,
-		Network:                httpapi.PaidNetwork(cfg),
-		PayTo:                  cfg.Payment.PayToAddress,
-		MaxTimeoutSeconds:      cfg.Payment.MaxTimeoutSeconds,
 		Routes:                 httpapi.PaidRoutes(cfg),
 		SyncFacilitatorOnStart: true,
 		Timeout:                cfg.Server.RequestTimeout,

@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	x402core "github.com/x402-foundation/x402/go"
 
 	"github.com/AxLabs/x402-go-server-example/internal/config"
 	"github.com/AxLabs/x402-go-server-example/internal/httpapi/handlers"
@@ -30,25 +29,29 @@ type RouterConfig struct {
 // middleware. Keeping a single source of these specs ensures the chi
 // routes and the SDK's RoutesConfig stay in sync.
 func PaidRoutes(cfg *config.Config) []x402.RouteSpec {
-	return []x402.RouteSpec{
-		{
-			Method:      http.MethodGet,
-			Path:        "/paid/hello",
-			Price:       cfg.Payment.PaidHelloPrice,
-			Description: "Paid hello resource",
-		},
-		{
-			Method:      http.MethodPost,
-			Path:        "/paid/echo",
-			Price:       cfg.Payment.PaidEchoPrice,
-			Description: "Paid echo resource",
-		},
+	routes := make([]x402.RouteSpec, 0, len(cfg.Payment.Routes))
+	for _, r := range cfg.Payment.Routes {
+		route := x402.RouteSpec{
+			Method:      r.Method,
+			Path:        r.Path,
+			Description: r.Description,
+			Accepts:     make([]x402.AcceptOption, 0, len(r.Accepts)),
+		}
+		for _, accept := range r.Accepts {
+			route.Accepts = append(route.Accepts, x402.AcceptOption{
+				Scheme:            accept.Scheme,
+				Network:           accept.Network,
+				PayTo:             accept.PayTo,
+				Asset:             accept.Asset,
+				Amount:            accept.Amount,
+				MaxTimeoutSeconds: accept.MaxTimeoutSeconds,
+				Extra:             accept.Extra,
+			})
+		}
+		routes = append(routes, route)
 	}
-}
 
-// PaidNetwork returns the CAIP-2 network used for paid routes.
-func PaidNetwork(cfg *config.Config) x402core.Network {
-	return x402core.Network(cfg.Payment.Network)
+	return routes
 }
 
 // NewRouter creates and configures the HTTP router.

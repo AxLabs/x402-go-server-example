@@ -7,7 +7,7 @@
 ```text
 ┌───────────────────────────────────────────────────────────────────┐
 │ cmd/server/main.go                                                │
-│   • loads config.Config (env)                                     │
+│   • loads config.Config (env + PAYMENT_CONFIG_FILE YAML)          │
 │   • builds internal/x402.Middleware (SDK-backed)                  │
 │   • constructs httpapi.NewRouter                                  │
 │   • runs net/http.Server with graceful shutdown                   │
@@ -60,8 +60,9 @@
 ### `internal/config`
 
 - Reads environment variables (with defaults).
-- Validates required fields (`PAY_TO_ADDRESS`, prices, network, facilitator URL).
-- Uses USD price strings and CAIP-2 networks so that nothing in this repo has to know about stablecoin contract addresses; the SDK resolves those through the facilitator's `/supported` response.
+- Reads `PAYMENT_CONFIG_FILE` and loads route-level accepts from YAML.
+- Validates required fields (`FACILITATOR_BASE_URL`, `payment.routes[*].accepts[*]`).
+- Uses explicit `scheme/network/asset/amount/payTo` entries matching x402 `PaymentRequirements`.
 
 ### `internal/logging`
 
@@ -71,8 +72,8 @@
 ### `internal/x402`
 
 - The **only** package in the repo that imports the SDK.
-- Exposes `Config`, `RouteSpec`, and `Middleware(Config) (func(http.Handler) http.Handler, error)`.
-- Validates inputs and translates our `RouteSpec` list into the SDK's `x402http.RoutesConfig`.
+- Exposes `Config`, `RouteSpec`, `AcceptOption`, and `Middleware(Config) (func(http.Handler) http.Handler, error)`.
+- Translates explicit route `Accepts` entries directly into the SDK's `x402http.RoutesConfig`.
 
 ### `internal/httpapi`
 
@@ -92,8 +93,9 @@
 
 - **No custom x402 code.** Hand-rolling the protocol duplicates work the SDK already does and invites bugs on every spec change. The `internal/x402` package is a ~50-line factory and nothing more.
 - **Handlers are ignorant of x402.** If the SDK middleware invokes a handler, payment already succeeded; the SDK writes `PAYMENT-RESPONSE` on the response after the handler returns. Handlers just write their JSON body.
-- **USD pricing.** Prices are USD strings such as `$0.01`. The SDK maps these to on-chain amounts using the facilitator's supported kinds. This keeps `.env.example` readable and portable across networks.
-- **CAIP-2 networks.** `eip155:84532` (Base Sepolia) is the default because the SDK ships a default stablecoin parser for it; production deployments typically override to `eip155:8453` (Base mainnet) or similar.
+- **Explicit accepts only.** Every payment option is configured as an explicit accept entry with concrete `asset` and `amount`.
+- **No primary/default distinction.** The server uses one uniform `accepts` model that mirrors the x402 API shape.
+- **CAIP-2 networks.** Each accept entry specifies its own network, so routes can advertise multi-chain options directly.
 
 ## What is deliberately absent
 

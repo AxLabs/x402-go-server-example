@@ -7,7 +7,7 @@
 // here. This package only:
 //
 //  1. Builds a RoutesConfig describing which HTTP routes are paid and what
-//     they cost (using the PayTo/Network/Price values loaded from config).
+//     accepts options they advertise (explicit scheme/network/asset/amount).
 //  2. Constructs an SDK HTTPFacilitatorClient pointing at our facilitator.
 //  3. Registers the SDK's built-in EVM "exact" scheme server.
 //  4. Returns an SDK-backed net/http middleware that can be plugged into
@@ -41,11 +41,21 @@ type RouteSpec struct {
 	Method string
 	// Path is the URL path (e.g. "/paid/hello").
 	Path string
-	// Price is an SDK-compatible price value. USD strings such as "$0.01"
-	// are resolved by the SDK against the facilitator's supported kinds.
-	Price string
 	// Description is advertised in the RoutesConfig.
 	Description string
+	// Accepts is the route's explicit x402 payment options.
+	Accepts []AcceptOption
+}
+
+// AcceptOption mirrors x402 PaymentRequirements fields.
+type AcceptOption struct {
+	Scheme            string
+	Network           string
+	PayTo             string
+	Asset             string
+	Amount            string
+	MaxTimeoutSeconds int
+	Extra             map[string]interface{}
 }
 
 // Pattern returns the SDK route key, e.g. "GET /paid/hello".
@@ -59,12 +69,6 @@ type Config struct {
 	FacilitatorURL string
 	// FacilitatorTimeout is the HTTP timeout for facilitator calls.
 	FacilitatorTimeout time.Duration
-	// Network is the CAIP-2 identifier (e.g. "eip155:84532").
-	Network x402.Network
-	// PayTo is the seller's receiving address.
-	PayTo string
-	// MaxTimeoutSeconds is the per-route MaxTimeoutSeconds advertised in 402.
-	MaxTimeoutSeconds int
 	// Routes is the list of paid endpoints.
 	Routes []RouteSpec
 	// SyncFacilitatorOnStart fetches supported kinds from the facilitator
@@ -79,12 +83,6 @@ type Config struct {
 // using the official x402 SDK. The returned middleware is safe to apply
 // with chi via r.Use or r.With, as chi accepts any func(http.Handler) http.Handler.
 func Middleware(cfg Config) (func(http.Handler) http.Handler, error) {
-	if cfg.PayTo == "" {
-		return nil, fmt.Errorf("x402: PayTo is required")
-	}
-	if cfg.Network == "" {
-		return nil, fmt.Errorf("x402: Network is required")
-	}
 	if cfg.FacilitatorURL == "" {
 		return nil, fmt.Errorf("x402: FacilitatorURL is required")
 	}
@@ -93,17 +91,40 @@ func Middleware(cfg Config) (func(http.Handler) http.Handler, error) {
 	}
 
 	routes := make(x402http.RoutesConfig, len(cfg.Routes))
+	seen := map[x402.Network]bool{}
+	schemes := []nethttp.SchemeConfig{}
 	for _, r := range cfg.Routes {
+		opts := x402http.PaymentOptions{}
+		for _, accept := range r.Accepts {
+			// The SDK's ParsePrice expects a map[string]interface{} for
+			// explicit asset+amount (not a typed struct).
+			price := map[string]interface{}{
+				"asset":  accept.Asset,
+				"amount": accept.Amount,
+			}
+			if len(accept.Extra) > 0 {
+				price["extra"] = accept.Extra
+			}
+			opts = append(opts, x402http.PaymentOption{
+				Scheme:            accept.Scheme,
+				PayTo:             accept.PayTo,
+				Price:             price,
+				Network:           x402.Network(accept.Network),
+				MaxTimeoutSeconds: accept.MaxTimeoutSeconds,
+				Extra:             accept.Extra,
+			})
+
+			net := x402.Network(accept.Network)
+			if !seen[net] {
+				seen[net] = true
+				schemes = append(schemes, nethttp.SchemeConfig{
+					Network: net,
+					Server:  evmserver.NewExactEvmScheme(),
+				})
+			}
+		}
 		routes[r.Pattern()] = x402http.RouteConfig{
-			Accepts: x402http.PaymentOptions{
-				{
-					Scheme:            Scheme,
-					PayTo:             cfg.PayTo,
-					Price:             r.Price,
-					Network:           cfg.Network,
-					MaxTimeoutSeconds: cfg.MaxTimeoutSeconds,
-				},
-			},
+			Accepts:     opts,
 			Description: r.Description,
 		}
 	}
@@ -118,12 +139,14 @@ func Middleware(cfg Config) (func(http.Handler) http.Handler, error) {
 		timeout = 30 * time.Second
 	}
 
+	if len(schemes) == 0 {
+		return nil, fmt.Errorf("x402: at least one accept option is required")
+	}
+
 	mw := nethttp.X402Payment(nethttp.Config{
-		Routes:      routes,
-		Facilitator: facClient,
-		Schemes: []nethttp.SchemeConfig{
-			{Network: cfg.Network, Server: evmserver.NewExactEvmScheme()},
-		},
+		Routes:                 routes,
+		Facilitator:            facClient,
+		Schemes:                schemes,
 		SyncFacilitatorOnStart: cfg.SyncFacilitatorOnStart,
 		Timeout:                timeout,
 	})

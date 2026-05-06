@@ -56,11 +56,12 @@ Run this repo as the seller server:
 
 ```bash
 cp .env.example .env
-# edit .env: set PAY_TO_ADDRESS at minimum
+# edit .env: set FACILITATOR_BASE_URL and PAYMENT_CONFIG_FILE
+# edit payment-config.example.yaml with your real addresses/amounts
 make run
 ```
 
-By default the server listens on `:8080` and prices `/paid/hello` at `$0.01` and `/paid/echo` at `$0.005` on `eip155:84532` (Base Sepolia). `FACILITATOR_BASE_URL` is required (no default). The SDK resolves the concrete asset (USDC) via the facilitator's `/supported` endpoint at startup.
+This server reads paid-route `accepts` options from a YAML file referenced by `PAYMENT_CONFIG_FILE`. Each accept entry is explicit (`scheme`, `network`, `asset`, `amount`, `payTo`, optional `maxTimeoutSeconds`, optional `extra`) and maps directly to x402 `PaymentRequirements`.
 
 ### Step 1: Call free and paid routes
 
@@ -104,15 +105,36 @@ See [.env.example](.env.example) for the full list. Key variables:
 
 | Variable               | Required | Default                          | Notes                                  |
 |------------------------|----------|----------------------------------|----------------------------------------|
-| `PAY_TO_ADDRESS`       | yes      | —                                | Seller EOA.                            |
-| `PAYMENT_NETWORK`      | no       | `eip155:84532`                   | CAIP-2 id.                             |
-| `PAID_HELLO_PRICE`     | no       | `$0.01`                          | USD string.                            |
-| `PAID_ECHO_PRICE`      | no       | `$0.005`                         | USD string.                            |
-| `PAYMENT_MAX_TIMEOUT`  | no       | `300s`                           | Advertised on 402.                     |
 | `FACILITATOR_BASE_URL` | yes      | —                                | Must speak x402.                       |
 | `FACILITATOR_TIMEOUT`  | no       | `30s`                            |                                        |
+| `PAYMENT_CONFIG_FILE`  | yes      | —                                | Path to YAML accepts config.           |
 | `SERVER_ADDR`          | no       | `:8080`                          |                                        |
 | `LOG_LEVEL`            | no       | `info`                           | `debug\|info\|warn\|error`             |
+
+### Payment YAML structure
+
+Use [payment-config.example.yaml](payment-config.example.yaml) as the template. The canonical shape is:
+
+```yaml
+payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      description: Paid hello resource
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "1000000000000000000"
+          payTo: 0xYourWalletAddressHere
+          maxTimeoutSeconds: 300
+          extra:
+            name: xGAS
+            version: "1"
+            assetTransferMethod: eip3009
+```
+
+All payment options are explicit and first-class; there is no primary/default vs extra distinction.
 
 ---
 

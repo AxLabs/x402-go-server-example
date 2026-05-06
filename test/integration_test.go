@@ -12,6 +12,7 @@
 package test
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -69,11 +70,38 @@ func newTestConfig(facilitatorURL string) *config.Config {
 		LogLevel:    "error",
 		Facilitator: config.FacilitatorConfig{BaseURL: facilitatorURL},
 		Payment: config.PaymentConfig{
-			Network:           "eip155:84532",
-			PayToAddress:      "0xtest",
-			PaidHelloPrice:    "$0.01",
-			PaidEchoPrice:     "$0.005",
-			MaxTimeoutSeconds: 300,
+			Routes: []config.PaymentRoute{
+				{
+					Method:      "GET",
+					Path:        "/paid/hello",
+					Description: "Paid hello resource",
+					Accepts: []config.PaymentAccept{
+						{
+							Scheme:            "exact",
+							Network:           "eip155:84532",
+							Asset:             "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+							Amount:            "10000",
+							PayTo:             "0xtest",
+							MaxTimeoutSeconds: 300,
+						},
+					},
+				},
+				{
+					Method:      "POST",
+					Path:        "/paid/echo",
+					Description: "Paid echo resource",
+					Accepts: []config.PaymentAccept{
+						{
+							Scheme:            "exact",
+							Network:           "eip155:84532",
+							Asset:             "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+							Amount:            "5000",
+							PayTo:             "0xtest",
+							MaxTimeoutSeconds: 300,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -82,9 +110,6 @@ func buildRouter(t *testing.T, cfg *config.Config) http.Handler {
 	t.Helper()
 	mw, err := x402wrap.Middleware(x402wrap.Config{
 		FacilitatorURL:         cfg.Facilitator.BaseURL,
-		Network:                httpapi.PaidNetwork(cfg),
-		PayTo:                  cfg.Payment.PayToAddress,
-		MaxTimeoutSeconds:      cfg.Payment.MaxTimeoutSeconds,
 		Routes:                 httpapi.PaidRoutes(cfg),
 		SyncFacilitatorOnStart: true,
 	})
@@ -168,5 +193,84 @@ func TestNotFoundIs404JSON(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", rec.Code)
+	}
+}
+
+func TestPaidHello_MultiOption402(t *testing.T) {
+	// Mock facilitator needs to support both networks.
+	handler := http.NewServeMux()
+	handler.HandleFunc("/supported", func(w http.ResponseWriter, r *http.Request) {
+		v := 2
+		resp := map[string]any{
+			"kinds": []map[string]any{
+				{"x402Version": v, "scheme": "exact", "network": "eip155:84532"},
+				{"x402Version": v, "scheme": "exact", "network": "eip155:47763"},
+			},
+			"extensions": []string{},
+			"signers":    map[string][]string{},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
+	})
+	handler.HandleFunc("/verify", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(x402.VerifyResponse{IsValid: true, Payer: "0xpayer"})
+	})
+	handler.HandleFunc("/settle", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(x402.SettleResponse{
+			Success: true, Transaction: "0xdeadbeef", Network: "eip155:84532", Payer: "0xpayer",
+		})
+	})
+	facilitator := httptest.NewServer(handler)
+	defer facilitator.Close()
+
+	cfg := newTestConfig(facilitator.URL)
+	cfg.Payment.Routes[0].Accepts = append(cfg.Payment.Routes[0].Accepts, config.PaymentAccept{
+		Scheme:            "exact",
+		Network:           "eip155:47763",
+		Asset:             "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE",
+		Amount:            "1000000000000000000",
+		PayTo:             "0xtest",
+		MaxTimeoutSeconds: 300,
+		Extra:             map[string]interface{}{"name": "xGAS", "version": "1", "assetTransferMethod": "eip3009"},
+	})
+
+	router := buildRouter(t, cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/paid/hello", nil)
+	req.Header.Set("Accept", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusPaymentRequired {
+		t.Fatalf("expected 402, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+
+	paymentRequired := rec.Header().Get("PAYMENT-REQUIRED")
+	if paymentRequired == "" {
+		t.Fatal("expected PAYMENT-REQUIRED header")
+	}
+
+	// Parse the PAYMENT-REQUIRED header (base64-encoded JSON) to verify multiple accepts
+	decoded, err := base64.StdEncoding.DecodeString(paymentRequired)
+	if err != nil {
+		t.Fatalf("failed to base64 decode PAYMENT-REQUIRED: %v", err)
+	}
+	var pr struct {
+		X402Version int `json:"x402Version"`
+		Accepts     []struct {
+			Scheme  string `json:"scheme"`
+			Network string `json:"network"`
+			Asset   string `json:"asset"`
+			Amount  string `json:"amount"`
+		} `json:"accepts"`
+	}
+	if err := json.Unmarshal(decoded, &pr); err != nil {
+		t.Fatalf("failed to parse PAYMENT-REQUIRED: %v", err)
+	}
+
+	if len(pr.Accepts) < 2 {
+		t.Fatalf("expected at least 2 accepts, got %d", len(pr.Accepts))
 	}
 }
