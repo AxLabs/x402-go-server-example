@@ -12,6 +12,7 @@ func TestLoad(t *testing.T) {
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       description: Paid hello resource
       accepts:
         - scheme: exact
@@ -26,6 +27,7 @@ func TestLoad(t *testing.T) {
             assetTransferMethod: eip3009
     - method: post
       path: /paid/echo
+      handler: paid_echo
       accepts:
         - scheme: exact
           network: eip155:47763
@@ -104,6 +106,7 @@ func TestLoadDefaults(t *testing.T) {
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       accepts:
         - scheme: exact
           network: eip155:47763
@@ -167,6 +170,7 @@ func TestLoadValidationErrors(t *testing.T) {
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       accepts:
         - scheme: exact
           network: eip155:47763
@@ -195,13 +199,14 @@ func TestLoadValidationErrors(t *testing.T) {
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       accepts: []
 `),
 			},
 			wantErr: "payment.routes[0].accepts must include at least one option",
 		},
 		{
-			name: "missing accept payTo",
+			name: "missing route handler",
 			env: map[string]string{
 				"FACILITATOR_BASE_URL": "http://facilitator:3000",
 				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
@@ -213,9 +218,66 @@ func TestLoadValidationErrors(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
+          payTo: 0xtest
+`),
+			},
+			wantErr: "payment.routes[0].handler is required",
+		},
+		{
+			name: "invalid route handler",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: unknown_handler
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0xtest
+`),
+			},
+			wantErr: "payment.routes[0].handler must be one of: paid_hello, paid_echo",
+		},
+		{
+			name: "missing accept payTo",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
 `),
 			},
 			wantErr: "payment.routes[0].accepts[0].payTo is required",
+		},
+		{
+			name: "non exact scheme",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: upto
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0xtest
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].scheme must be exact",
 		},
 	}
 

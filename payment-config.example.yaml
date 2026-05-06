@@ -2,17 +2,20 @@ payment:
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       description: Paid hello resource
       accepts:
         - scheme: exact
           network: eip155:84532
-          asset: 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+          # Example token address on Base Sepolia (replace with your actual token).
+          asset: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
           amount: "10000"
           payTo: 0xYourWalletAddressHere
           maxTimeoutSeconds: 300
         - scheme: exact
           network: eip155:47763
-          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          # Example xGAS-style option on Neo X (replace with your actual xGAS token address).
+          asset: 0xYourXGASTokenAddress
           amount: "1000000000000000000"
           payTo: 0xYourWalletAddressHere
           maxTimeoutSeconds: 300
@@ -23,11 +26,12 @@ payment:
 
     - method: POST
       path: /paid/echo
+      handler: paid_echo
       description: Paid echo resource
       accepts:
         - scheme: exact
           network: eip155:84532
-          asset: 0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
+          asset: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
           amount: "5000"
           payTo: 0xYourWalletAddressHere
           maxTimeoutSeconds: 300

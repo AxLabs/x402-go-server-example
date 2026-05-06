@@ -50,11 +50,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	router := httpapi.NewRouter(httpapi.RouterConfig{
+	router, err := httpapi.NewRouter(httpapi.RouterConfig{
 		Config:         cfg,
 		Logger:         logger,
 		X402Middleware: mw,
 	})
+	if err != nil {
+		logger.Error("failed to build router", "error", err)
+		os.Exit(1)
+	}
 
 	server := httpapi.NewServer(
 		cfg.Server.Addr,

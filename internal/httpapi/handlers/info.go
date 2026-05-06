@@ -36,6 +36,7 @@ type PricingInfo struct {
 type EndpointPricing struct {
 	Method      string          `json:"method"`
 	Path        string          `json:"path"`
+	Handler     string          `json:"handler"`
 	Description string          `json:"description,omitempty"`
 	Accepts     []PaymentAccept `json:"accepts"`
 }
@@ -71,6 +72,7 @@ func (h *InfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		routes = append(routes, EndpointPricing{
 			Method:      route.Method,
 			Path:        route.Path,
+			Handler:     route.Handler,
 			Description: route.Description,
 			Accepts:     accepts,
 		})

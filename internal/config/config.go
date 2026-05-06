@@ -45,10 +45,18 @@ type PaymentConfig struct {
 	Routes []PaymentRoute `json:"routes" yaml:"routes"`
 }
 
+const (
+	// PaidHandlerHello serves the paid hello business response.
+	PaidHandlerHello = "paid_hello"
+	// PaidHandlerEcho serves the paid echo business response.
+	PaidHandlerEcho = "paid_echo"
+)
+
 // PaymentRoute defines one paid route and its accepts list.
 type PaymentRoute struct {
 	Method      string          `json:"method" yaml:"method"`
 	Path        string          `json:"path" yaml:"path"`
+	Handler     string          `json:"handler" yaml:"handler"`
 	Description string          `json:"description,omitempty" yaml:"description,omitempty"`
 	Accepts     []PaymentAccept `json:"accepts" yaml:"accepts"`
 }
@@ -121,6 +129,7 @@ func (c *Config) Validate() error {
 	if len(c.Payment.Routes) == 0 {
 		return fmt.Errorf("payment.routes must include at least one route")
 	}
+	seen := make(map[string]struct{}, len(c.Payment.Routes))
 	for i := range c.Payment.Routes {
 		r := &c.Payment.Routes[i]
 		if r.Method == "" {
@@ -130,12 +139,29 @@ func (c *Config) Validate() error {
 		if r.Path == "" {
 			return fmt.Errorf("payment.routes[%d].path is required", i)
 		}
+		if r.Handler == "" {
+			return fmt.Errorf("payment.routes[%d].handler is required", i)
+		}
+		r.Handler = strings.ToLower(r.Handler)
+		if r.Handler != PaidHandlerHello && r.Handler != PaidHandlerEcho {
+			return fmt.Errorf("payment.routes[%d].handler must be one of: %s, %s", i, PaidHandlerHello, PaidHandlerEcho)
+		}
+		key := r.Method + " " + r.Path
+		if _, exists := seen[key]; exists {
+			return fmt.Errorf("duplicate payment route: %s", key)
+		}
+		seen[key] = struct{}{}
 		if len(r.Accepts) == 0 {
 			return fmt.Errorf("payment.routes[%d].accepts must include at least one option", i)
 		}
-		for j, accept := range r.Accepts {
+		for j := range r.Accepts {
+			accept := &r.Accepts[j]
 			if accept.Scheme == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].scheme is required", i, j)
+			}
+			accept.Scheme = strings.ToLower(accept.Scheme)
+			if accept.Scheme != "exact" {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].scheme must be exact", i, j)
 			}
 			if accept.Network == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].network is required", i, j)

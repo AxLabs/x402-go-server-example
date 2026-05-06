@@ -74,6 +74,7 @@ func newTestConfig(facilitatorURL string) *config.Config {
 				{
 					Method:      "GET",
 					Path:        "/paid/hello",
+					Handler:     config.PaidHandlerHello,
 					Description: "Paid hello resource",
 					Accepts: []config.PaymentAccept{
 						{
@@ -89,6 +90,7 @@ func newTestConfig(facilitatorURL string) *config.Config {
 				{
 					Method:      "POST",
 					Path:        "/paid/echo",
+					Handler:     config.PaidHandlerEcho,
 					Description: "Paid echo resource",
 					Accepts: []config.PaymentAccept{
 						{
@@ -116,11 +118,15 @@ func buildRouter(t *testing.T, cfg *config.Config) http.Handler {
 	if err != nil {
 		t.Fatalf("build middleware: %v", err)
 	}
-	return httpapi.NewRouter(httpapi.RouterConfig{
+	router, err := httpapi.NewRouter(httpapi.RouterConfig{
 		Config:         cfg,
 		Logger:         slog.Default(),
 		X402Middleware: mw,
 	})
+	if err != nil {
+		t.Fatalf("build router: %v", err)
+	}
+	return router
 }
 
 func TestHealthAndInfo_Unauthenticated(t *testing.T) {

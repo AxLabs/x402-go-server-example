@@ -61,7 +61,7 @@ cp .env.example .env
 make run
 ```
 
-This server reads paid-route `accepts` options from a YAML file referenced by `PAYMENT_CONFIG_FILE`. Each accept entry is explicit (`scheme`, `network`, `asset`, `amount`, `payTo`, optional `maxTimeoutSeconds`, optional `extra`) and maps directly to x402 `PaymentRequirements`.
+This server reads paid-route definitions from `PAYMENT_CONFIG_FILE`. Each route declares a concrete business `handler` (`paid_hello` or `paid_echo`) plus explicit `accepts` options (`scheme`, `network`, `asset`, `amount`, `payTo`, optional `maxTimeoutSeconds`, optional `extra`) that map directly to x402 `PaymentRequirements`.
 
 ### Step 1: Call free and paid routes
 
@@ -120,11 +120,12 @@ payment:
   routes:
     - method: GET
       path: /paid/hello
+      handler: paid_hello
       description: Paid hello resource
       accepts:
         - scheme: exact
           network: eip155:47763
-          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          asset: 0xYourXGASTokenAddress
           amount: "1000000000000000000"
           payTo: 0xYourWalletAddressHere
           maxTimeoutSeconds: 300
@@ -134,7 +135,7 @@ payment:
             assetTransferMethod: eip3009
 ```
 
-All payment options are explicit and first-class; there is no primary/default vs extra distinction.
+`handler` is required per route and must be one of `paid_hello` or `paid_echo`. `scheme` is currently constrained to `exact`.
 
 ---
 

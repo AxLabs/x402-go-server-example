@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -18,8 +19,8 @@ type RouterConfig struct {
 	Config *config.Config
 	Logger *slog.Logger
 	// X402Middleware is the net/http middleware returned by the SDK-backed
-	// internal/x402 package. It is applied to the /paid subrouter so that
-	// all paid routes go through the SDK's payment gating. It is injected
+	// internal/x402 package. It is applied to each configured paid route so
+	// those routes go through the SDK's payment gating. It is injected
 	// here (rather than built internally) so that tests can swap in a
 	// middleware backed by a mock facilitator.
 	X402Middleware func(http.Handler) http.Handler
@@ -55,7 +56,7 @@ func PaidRoutes(cfg *config.Config) []x402.RouteSpec {
 }
 
 // NewRouter creates and configures the HTTP router.
-func NewRouter(cfg RouterConfig) http.Handler {
+func NewRouter(cfg RouterConfig) (http.Handler, error) {
 	r := chi.NewRouter()
 
 	// Global middleware (not x402-related).
@@ -67,17 +68,24 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	r.Get("/healthz", handlers.NewHealthHandler().ServeHTTP)
 	r.Get("/info", handlers.NewInfoHandler(cfg.Config).ServeHTTP)
 
-	// Paid endpoints: all /paid/* routes are gated by the SDK middleware.
+	// Paid endpoints: all configured paid routes are gated by the SDK middleware.
 	// The SDK middleware runs ProcessHTTPRequest (which returns 402 or the
 	// verified payment) and then, after the handler returns, runs
 	// ProcessSettlement and appends the PAYMENT-RESPONSE header.
-	r.Route("/paid", func(r chi.Router) {
-		if cfg.X402Middleware != nil {
-			r.Use(cfg.X402Middleware)
+	for i := range cfg.Config.Payment.Routes {
+		paidRoute := cfg.Config.Payment.Routes[i]
+		handler, err := paidRouteHandler(paidRoute.Handler)
+		if err != nil {
+			return nil, fmt.Errorf("payment.routes[%d]: %w", i, err)
 		}
-		r.Get("/hello", handlers.NewPaidHelloHandler().ServeHTTP)
-		r.Post("/echo", handlers.NewPaidEchoHandler().ServeHTTP)
-	})
+
+		r.Group(func(gr chi.Router) {
+			if cfg.X402Middleware != nil {
+				gr.Use(cfg.X402Middleware)
+			}
+			gr.Method(paidRoute.Method, paidRoute.Path, handler)
+		})
+	}
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		handlers.ErrorJSON(w, http.StatusNotFound, "not_found", "endpoint not found")
@@ -87,5 +95,16 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		handlers.ErrorJSON(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 	})
 
-	return r
+	return r, nil
+}
+
+func paidRouteHandler(name string) (http.Handler, error) {
+	switch name {
+	case config.PaidHandlerHello:
+		return handlers.NewPaidHelloHandler(), nil
+	case config.PaidHandlerEcho:
+		return handlers.NewPaidEchoHandler(), nil
+	default:
+		return nil, fmt.Errorf("unsupported handler %q", name)
+	}
 }

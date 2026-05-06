@@ -19,10 +19,8 @@
 │   chi.Mux with:                                                   │
 │     • request-id + slog request-logging middleware                │
 │     • GET /healthz, GET /info  (unpaid)                           │
-│     • /paid subrouter:                                            │
-│         Use(cfg.X402Middleware)  ← from internal/x402             │
-│         GET  /paid/hello                                          │
-│         POST /paid/echo                                           │
+│     • paid routes loaded from PAYMENT_CONFIG_FILE                 │
+│       each route gets cfg.X402Middleware and a bound handler      │
 └───────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -61,7 +59,8 @@
 
 - Reads environment variables (with defaults).
 - Reads `PAYMENT_CONFIG_FILE` and loads route-level accepts from YAML.
-- Validates required fields (`FACILITATOR_BASE_URL`, `payment.routes[*].accepts[*]`).
+- Validates required fields (`FACILITATOR_BASE_URL`, `payment.routes[*].handler`, `payment.routes[*].accepts[*]`).
+- Normalizes `method` to uppercase and enforces `scheme=exact` for now.
 - Uses explicit `scheme/network/asset/amount/payTo` entries matching x402 `PaymentRequirements`.
 
 ### `internal/logging`
@@ -77,7 +76,8 @@
 
 ### `internal/httpapi`
 
-- `router.go` builds the chi router and plugs the SDK middleware onto the `/paid` subrouter via `r.Use(cfg.X402Middleware)`.
+- `router.go` builds the chi router and dynamically registers paid routes from config.
+- Each configured paid route is bound to a concrete handler (`paid_hello` or `paid_echo`) and wrapped with the SDK middleware.
 - `middleware/` contains request-id and request-logging middleware.
 - `handlers/` contains **protocol-agnostic** handlers. They do not import the SDK and do not touch any payment-related context keys.
 
@@ -95,6 +95,8 @@
 - **Handlers are ignorant of x402.** If the SDK middleware invokes a handler, payment already succeeded; the SDK writes `PAYMENT-RESPONSE` on the response after the handler returns. Handlers just write their JSON body.
 - **Explicit accepts only.** Every payment option is configured as an explicit accept entry with concrete `asset` and `amount`.
 - **No primary/default distinction.** The server uses one uniform `accepts` model that mirrors the x402 API shape.
+- **Explicit handler binding.** Every paid route declares its business handler in config; startup fails for unsupported handlers.
+- **Exact-only scheme policy.** Config validation currently allows only `scheme: exact` until additional scheme servers are wired.
 - **CAIP-2 networks.** Each accept entry specifies its own network, so routes can advertise multi-chain options directly.
 
 ## What is deliberately absent

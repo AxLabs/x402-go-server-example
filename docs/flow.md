@@ -8,12 +8,12 @@ This document traces an HTTP request from the client to a paid handler, showing 
 Client ──► chi.Router ──► request-id mw ──► request-logging mw ──► healthHandler ──► 200
 ```
 
-No SDK code runs. The `/paid` subrouter is never entered.
+No SDK code runs. The request does not match any configured paid route.
 
 ## Paid request — unauthenticated
 
 ```text
-Client ──► chi.Router ──► request-id mw ──► logging mw ──► /paid subrouter
+Client ──► chi.Router ──► request-id mw ──► logging mw ──► configured paid route
                                                                │
                                                                ▼
                                                  SDK middleware (nethttp.X402Payment)
@@ -30,13 +30,13 @@ What the SDK does here:
 
 1. Inspects `PAYMENT-SIGNATURE` and finds it missing.
 2. Looks up the route in its `RoutesConfig`.
-4. Builds a `PaymentRequirements` list using all `PaymentOption` entries we supplied in the route's explicit `Accepts` array.
+3. Builds a `PaymentRequirements` list using all `PaymentOption` entries we supplied in the route's explicit `Accepts` array.
 4. Serializes that into the `PAYMENT-REQUIRED` response header and returns HTTP 402. The business handler is never invoked. The client picks one option from the `accepts` array to fulfill.
 
 ## Paid request — authenticated
 
 ```text
-Client ──► chi.Router ──► request-id mw ──► logging mw ──► /paid subrouter
+Client ──► chi.Router ──► request-id mw ──► logging mw ──► configured paid route
                                                                │
                                                                ▼
                                                  SDK middleware
@@ -81,7 +81,7 @@ Things worth noting:
 ## Error paths
 
 - **Invalid JSON body on `POST /paid/echo`**: `paid_echo` handler returns 400 **before** any body processing occurs. The SDK middleware has already verified payment at this point, so a settlement attempt still follows only on success. (Our example keeps this simple; a real server would tie settlement to a successful handler outcome more carefully.)
-- **Unknown path**: chi's `NotFoundHandler` returns a JSON 404; the SDK middleware is never reached because the path is not matched by the `/paid` subrouter.
+- **Unknown path**: chi's `NotFoundHandler` returns a JSON 404; the SDK middleware is never reached because the path is not matched by any configured paid route.
 - **Facilitator unreachable at startup**: `nethttp.X402Payment` with `SyncFacilitatorOnStart: true` surfaces this as an error from `x402.Middleware(...)`, which `cmd/server/main.go` treats as fatal.
 
 ## Where to look in the code

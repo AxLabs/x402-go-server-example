@@ -19,6 +19,7 @@ func TestInfoHandler(t *testing.T) {
 				{
 					Method:      "GET",
 					Path:        "/paid/hello",
+					Handler:     config.PaidHandlerHello,
 					Description: "Paid hello resource",
 					Accepts: []config.PaymentAccept{
 						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "10000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
@@ -27,6 +28,7 @@ func TestInfoHandler(t *testing.T) {
 				{
 					Method:      "POST",
 					Path:        "/paid/echo",
+					Handler:     config.PaidHandlerEcho,
 					Description: "Paid echo resource",
 					Accepts: []config.PaymentAccept{
 						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "5000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
@@ -64,6 +66,9 @@ func TestInfoHandler(t *testing.T) {
 	if response.Pricing.Routes[0].Path != "/paid/hello" {
 		t.Errorf("expected first route /paid/hello, got %s", response.Pricing.Routes[0].Path)
 	}
+	if response.Pricing.Routes[0].Handler != config.PaidHandlerHello {
+		t.Errorf("expected first route handler %s, got %s", config.PaidHandlerHello, response.Pricing.Routes[0].Handler)
+	}
 	if len(response.Pricing.Routes[0].Accepts) != 1 {
 		t.Fatalf("expected 1 accept on /paid/hello, got %d", len(response.Pricing.Routes[0].Accepts))
 	}
@@ -80,16 +85,18 @@ func TestInfoHandler_MultipleOptions(t *testing.T) {
 		Payment: config.PaymentConfig{
 			Routes: []config.PaymentRoute{
 				{
-					Method: "GET",
-					Path:   "/paid/hello",
+					Method:  "GET",
+					Path:    "/paid/hello",
+					Handler: config.PaidHandlerHello,
 					Accepts: []config.PaymentAccept{
 						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "10000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
 						{Scheme: "exact", Network: "eip155:47763", Asset: "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE", Amount: "1000000000000000000", PayTo: "0xpayto", MaxTimeoutSeconds: 300, Extra: map[string]interface{}{"name": "xGAS", "version": "1"}},
 					},
 				},
 				{
-					Method: "POST",
-					Path:   "/paid/echo",
+					Method:  "POST",
+					Path:    "/paid/echo",
+					Handler: config.PaidHandlerEcho,
 					Accepts: []config.PaymentAccept{
 						{Scheme: "exact", Network: "eip155:84532", Asset: "0xAsset1", Amount: "5000", PayTo: "0xpayto", MaxTimeoutSeconds: 300},
 					},
