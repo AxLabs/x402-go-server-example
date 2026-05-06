@@ -57,7 +57,7 @@ Run this repo as the seller server:
 ```bash
 cp .env.example .env
 # edit .env: set FACILITATOR_BASE_URL and PAYMENT_CONFIG_FILE
-# edit payment-config.example.yaml (or payment-config.testnet.yaml) with your real addresses/amounts
+# edit payment-config.example.yaml with your real addresses/amounts
 make run
 ```
 
@@ -133,7 +133,7 @@ payment:
       description: Paid hello resource
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0x2222222222222222222222222222222222222222
           amount: "1000000000000000000"
           payTo: 0x1111111111111111111111111111111111111111
@@ -145,8 +145,6 @@ payment:
 ```
 
 `handler` is required per route and must be one of `paid_hello` or `paid_echo`. `scheme` is currently constrained to `exact`.
-
-For a runnable Neo X Testnet profile, use [payment-config.testnet.yaml](payment-config.testnet.yaml) and `.env.testnet`.
 
 ---
 

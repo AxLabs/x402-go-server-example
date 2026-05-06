@@ -210,7 +210,7 @@ func TestPaidHello_MultiOption402(t *testing.T) {
 		resp := map[string]any{
 			"kinds": []map[string]any{
 				{"x402Version": v, "scheme": "exact", "network": "eip155:84532"},
-				{"x402Version": v, "scheme": "exact", "network": "eip155:47763"},
+				{"x402Version": v, "scheme": "exact", "network": "eip155:12227332"},
 			},
 			"extensions": []string{},
 			"signers":    map[string][]string{},
@@ -234,7 +234,7 @@ func TestPaidHello_MultiOption402(t *testing.T) {
 	cfg := newTestConfig(facilitator.URL)
 	cfg.Payment.Routes[0].Accepts = append(cfg.Payment.Routes[0].Accepts, config.PaymentAccept{
 		Scheme:            "exact",
-		Network:           "eip155:47763",
+		Network:           "eip155:12227332",
 		Asset:             "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE",
 		Amount:            "1000000000000000000",
 		PayTo:             "0x1111111111111111111111111111111111111111",

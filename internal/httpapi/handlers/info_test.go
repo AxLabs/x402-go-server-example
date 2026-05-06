@@ -90,7 +90,7 @@ func TestInfoHandler_MultipleOptions(t *testing.T) {
 					Handler: config.PaidHandlerHello,
 					Accepts: []config.PaymentAccept{
 						{Scheme: "exact", Network: "eip155:84532", Asset: "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", Amount: "10000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300},
-						{Scheme: "exact", Network: "eip155:47763", Asset: "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE", Amount: "1000000000000000000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300, Extra: map[string]interface{}{"name": "xGAS", "version": "1"}},
+						{Scheme: "exact", Network: "eip155:12227332", Asset: "0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE", Amount: "1000000000000000000", PayTo: "0x1111111111111111111111111111111111111111", MaxTimeoutSeconds: 300, Extra: map[string]interface{}{"name": "xGAS", "version": "1"}},
 					},
 				},
 				{
@@ -127,8 +127,8 @@ func TestInfoHandler_MultipleOptions(t *testing.T) {
 	if len(response.Pricing.Routes[0].Accepts) != 2 {
 		t.Fatalf("expected /paid/hello to have 2 accepts, got %d", len(response.Pricing.Routes[0].Accepts))
 	}
-	if response.Pricing.Routes[0].Accepts[1].Network != "eip155:47763" {
-		t.Errorf("expected second /paid/hello accept on eip155:47763, got %s", response.Pricing.Routes[0].Accepts[1].Network)
+	if response.Pricing.Routes[0].Accepts[1].Network != "eip155:12227332" {
+		t.Errorf("expected second /paid/hello accept on eip155:12227332, got %s", response.Pricing.Routes[0].Accepts[1].Network)
 	}
 	if len(response.Pricing.Routes[1].Accepts) != 1 {
 		t.Fatalf("expected /paid/echo to have 1 accept, got %d", len(response.Pricing.Routes[1].Accepts))

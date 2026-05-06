@@ -1,7 +1,6 @@
 payment:
   # This example intentionally demonstrates multi-network accepts on one route
-  # (Base Sepolia + Neo X Testnet). Use payment-config.testnet.yaml for a
-  # runnable Neo X Testnet-only profile.
+  # (Base Sepolia + Neo X Testnet). Replace addresses/amounts before use.
   routes:
     - method: GET
       path: /paid/hello
@@ -16,7 +15,7 @@ payment:
           payTo: 0x1111111111111111111111111111111111111111
           maxTimeoutSeconds: 300
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           # Example xGAS-style option on Neo X (replace with your actual xGAS token address).
           asset: 0x2222222222222222222222222222222222222222
           amount: "1000000000000000000"

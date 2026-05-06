@@ -17,7 +17,7 @@ func TestLoad(t *testing.T) {
       description: Paid hello resource
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "1000000000000000000"
           payTo: 0x1111111111111111111111111111111111111111
@@ -31,7 +31,7 @@ func TestLoad(t *testing.T) {
       handler: paid_echo
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "500000000000000000"
           payTo: 0x1111111111111111111111111111111111111111
@@ -110,7 +110,7 @@ func TestLoadDefaults(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -167,7 +167,7 @@ func TestLoadInvalidPaymentFile(t *testing.T) {
 }
 
 func TestLoadInvalidPaymentYAML(t *testing.T) {
-	paymentFile := writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:47763\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n\tpayTo: 0x1111111111111111111111111111111111111111\n")
+	paymentFile := writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:12227332\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n\tpayTo: 0x1111111111111111111111111111111111111111\n")
 
 	cleanup := setTestEnv(t, map[string]string{
 		"FACILITATOR_BASE_URL": "http://facilitator:3000",
@@ -192,7 +192,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -234,7 +234,7 @@ func TestLoadValidationErrors(t *testing.T) {
       path: /paid/hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -253,7 +253,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: unknown_handler
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -272,7 +272,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
 `),
@@ -290,7 +290,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: upto
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -309,7 +309,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -328,7 +328,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -347,7 +347,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -385,7 +385,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xabc
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
@@ -404,7 +404,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "0"
           payTo: 0x1111111111111111111111111111111111111111
@@ -416,7 +416,7 @@ func TestLoadValidationErrors(t *testing.T) {
 			name: "invalid accept payTo address",
 			env: map[string]string{
 				"FACILITATOR_BASE_URL": "http://facilitator:3000",
-				"PAYMENT_CONFIG_FILE":  writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:47763\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n          payTo: \"0x123\"\n"),
+				"PAYMENT_CONFIG_FILE":  writeTestPaymentConfig(t, "payment:\n  routes:\n    - method: GET\n      path: /paid/hello\n      handler: paid_hello\n      accepts:\n        - scheme: exact\n          network: eip155:12227332\n          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE\n          amount: \"100\"\n          payTo: \"0x123\"\n"),
 			},
 			wantErr: "payment.routes[0].accepts[0].payTo must be a valid EVM address",
 		},
@@ -431,7 +431,7 @@ func TestLoadValidationErrors(t *testing.T) {
       handler: paid_hello
       accepts:
         - scheme: exact
-          network: eip155:47763
+          network: eip155:12227332
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
           payTo: 0x1111111111111111111111111111111111111111
