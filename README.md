@@ -60,7 +60,7 @@ cp .env.example .env
 make run
 ```
 
-By default the server listens on `:8080`, points at `https://x402.org/facilitator`, and prices `/paid/hello` at `$0.01` and `/paid/echo` at `$0.005` on `eip155:84532` (Base Sepolia). The SDK resolves the concrete asset (USDC) via the facilitator's `/supported` endpoint at startup.
+By default the server listens on `:8080` and prices `/paid/hello` at `$0.01` and `/paid/echo` at `$0.005` on `eip155:84532` (Base Sepolia). `FACILITATOR_BASE_URL` is required (no default). The SDK resolves the concrete asset (USDC) via the facilitator's `/supported` endpoint at startup.
 
 ### Step 1: Call free and paid routes
 
@@ -109,7 +109,7 @@ See [.env.example](.env.example) for the full list. Key variables:
 | `PAID_HELLO_PRICE`     | no       | `$0.01`                          | USD string.                            |
 | `PAID_ECHO_PRICE`      | no       | `$0.005`                         | USD string.                            |
 | `PAYMENT_MAX_TIMEOUT`  | no       | `300s`                           | Advertised on 402.                     |
-| `FACILITATOR_BASE_URL` | no       | `https://x402.org/facilitator`   | Must speak x402.                       |
+| `FACILITATOR_BASE_URL` | yes      | —                                | Must speak x402.                       |
 | `FACILITATOR_TIMEOUT`  | no       | `30s`                            |                                        |
 | `SERVER_ADDR`          | no       | `:8080`                          |                                        |
 | `LOG_LEVEL`            | no       | `info`                           | `debug\|info\|warn\|error`             |

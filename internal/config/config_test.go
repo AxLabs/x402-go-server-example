@@ -62,7 +62,8 @@ func TestLoad(t *testing.T) {
 
 func TestLoadDefaults(t *testing.T) {
 	cleanup := setTestEnv(t, map[string]string{
-		"PAY_TO_ADDRESS": "0xdefault",
+		"PAY_TO_ADDRESS":       "0xdefault",
+		"FACILITATOR_BASE_URL": "http://default-facilitator:3000",
 	})
 	defer cleanup()
 
@@ -86,8 +87,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Payment.PaidEchoPrice != "$0.005" {
 		t.Errorf("expected default echo price $0.005, got %s", cfg.Payment.PaidEchoPrice)
 	}
-	if cfg.Facilitator.BaseURL != "https://x402.org/facilitator" {
-		t.Errorf("expected default facilitator URL, got %s", cfg.Facilitator.BaseURL)
+	if cfg.Facilitator.BaseURL != "http://default-facilitator:3000" {
+		t.Errorf("expected facilitator URL from env, got %s", cfg.Facilitator.BaseURL)
 	}
 }
 
@@ -101,6 +102,13 @@ func TestLoadValidationErrors(t *testing.T) {
 			name:    "missing PAY_TO_ADDRESS",
 			env:     map[string]string{},
 			wantErr: "PAY_TO_ADDRESS is required",
+		},
+		{
+			name: "missing FACILITATOR_BASE_URL",
+			env: map[string]string{
+				"PAY_TO_ADDRESS": "0x1234567890abcdef",
+			},
+			wantErr: "FACILITATOR_BASE_URL is required",
 		},
 	}
 

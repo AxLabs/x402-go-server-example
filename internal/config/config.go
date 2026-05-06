@@ -29,7 +29,7 @@ type ServerConfig struct {
 // The facilitator implements the x402 verify/settle/supported API and is
 // consumed via the official SDK's HTTPFacilitatorClient.
 type FacilitatorConfig struct {
-	// BaseURL is the facilitator service base URL, e.g. "https://x402.org/facilitator".
+	// BaseURL is the facilitator service base URL.
 	BaseURL string
 
 	// Timeout is the HTTP client timeout for facilitator requests.
@@ -72,7 +72,7 @@ func Load() (*Config, error) {
 
 	cfg.LogLevel = getEnvOrDefault("LOG_LEVEL", "info")
 
-	cfg.Facilitator.BaseURL = getEnvOrDefault("FACILITATOR_BASE_URL", "https://x402.org/facilitator")
+	cfg.Facilitator.BaseURL = os.Getenv("FACILITATOR_BASE_URL")
 	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 30*time.Second)
 
 	cfg.Payment.Network = getEnvOrDefault("PAYMENT_NETWORK", "eip155:84532")
