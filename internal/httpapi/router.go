@@ -74,6 +74,9 @@ func NewRouter(cfg RouterConfig) (http.Handler, error) {
 	// ProcessSettlement and appends the PAYMENT-RESPONSE header.
 	for i := range cfg.Config.Payment.Routes {
 		paidRoute := cfg.Config.Payment.Routes[i]
+		if isReservedPublicRoute(paidRoute.Method, paidRoute.Path) {
+			return nil, fmt.Errorf("payment.routes[%d] cannot use reserved public route: %s %s", i, paidRoute.Method, paidRoute.Path)
+		}
 		handler, err := paidRouteHandler(paidRoute.Handler)
 		if err != nil {
 			return nil, fmt.Errorf("payment.routes[%d]: %w", i, err)
@@ -107,4 +110,8 @@ func paidRouteHandler(name string) (http.Handler, error) {
 	default:
 		return nil, fmt.Errorf("unsupported handler %q", name)
 	}
+}
+
+func isReservedPublicRoute(method, path string) bool {
+	return (method == http.MethodGet && path == "/healthz") || (method == http.MethodGet && path == "/info")
 }

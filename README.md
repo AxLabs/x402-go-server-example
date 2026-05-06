@@ -28,8 +28,8 @@ An example Go HTTP server for x402 that monetizes resources with the [x402](http
         │                        │
         ├── /healthz, /info ─────┼──► business handler (no payment)
         │                        │
-        └── /paid/* subrouter    │
-                │                │
+        └── configured paid route│
+          │                │
           SDK middleware         │
           (nethttp.X402Payment)  │
                 │                │
@@ -43,7 +43,7 @@ An example Go HTTP server for x402 that monetizes resources with the [x402](http
 ```
 
 - [internal/x402/middleware.go](internal/x402/middleware.go) — the only place where we construct SDK objects.
-- [internal/httpapi/router.go](internal/httpapi/router.go) — plugs that middleware onto the `/paid` subrouter.
+- [internal/httpapi/router.go](internal/httpapi/router.go) — dynamically registers configured paid routes and applies SDK middleware per route.
 - [internal/httpapi/handlers/](internal/httpapi/handlers) — handlers that know nothing about x402.
 
 For more detail see [docs/architecture.md](docs/architecture.md) and [docs/flow.md](docs/flow.md).
@@ -65,12 +65,21 @@ This server reads paid-route definitions from `PAYMENT_CONFIG_FILE`. Each route 
 
 ### Step 1: Call free and paid routes
 
-Unauthenticated requests to a paid route return an SDK-generated 402 with the `PAYMENT-REQUIRED` header carrying the accepts list:
+Unauthenticated requests to a paid route return an SDK-generated 402 with the `PAYMENT-REQUIRED` header carrying a base64-encoded JSON challenge with the accepts list:
 
 ```bash
 curl -i http://localhost:8080/paid/hello
 # HTTP/1.1 402 Payment Required
-# PAYMENT-REQUIRED: {"x402Version":2,"accepts":[...]}
+# PAYMENT-REQUIRED: eyJ4NDAyVmVyc2lvbiI6MiwiYWNjZXB0cyI6W119
+```
+
+Decode helper:
+
+```bash
+curl -si http://localhost:8080/paid/hello \
+  | awk -F': ' '/^PAYMENT-REQUIRED:/ {print $2}' \
+  | tr -d '\r\n' \
+  | base64 --decode | jq .
 ```
 
 The health and info endpoints are always free:
@@ -125,9 +134,9 @@ payment:
       accepts:
         - scheme: exact
           network: eip155:47763
-          asset: 0xYourXGASTokenAddress
+          asset: 0x2222222222222222222222222222222222222222
           amount: "1000000000000000000"
-          payTo: 0xYourWalletAddressHere
+          payTo: 0x1111111111111111111111111111111111111111
           maxTimeoutSeconds: 300
           extra:
             name: xGAS

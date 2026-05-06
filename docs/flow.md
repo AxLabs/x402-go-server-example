@@ -22,7 +22,7 @@ Client ──► chi.Router ──► request-id mw ──► logging mw ──�
                                                                │
                                                                ▼
                                                402 Payment Required
-                                               PAYMENT-REQUIRED: {x402Version, accepts:[…]}
+                                               PAYMENT-REQUIRED: base64(JSON{x402Version, accepts:[…]})
                                                body: null
 ```
 
@@ -31,7 +31,7 @@ What the SDK does here:
 1. Inspects `PAYMENT-SIGNATURE` and finds it missing.
 2. Looks up the route in its `RoutesConfig`.
 3. Builds a `PaymentRequirements` list using all `PaymentOption` entries we supplied in the route's explicit `Accepts` array.
-4. Serializes that into the `PAYMENT-REQUIRED` response header and returns HTTP 402. The business handler is never invoked. The client picks one option from the `accepts` array to fulfill.
+4. Serializes the challenge JSON, base64-encodes it into the `PAYMENT-REQUIRED` response header, and returns HTTP 402. The business handler is never invoked. The client decodes the header and picks one option from the `accepts` array to fulfill.
 
 ## Paid request — authenticated
 
@@ -39,7 +39,7 @@ What the SDK does here:
 Client ──► chi.Router ──► request-id mw ──► logging mw ──► configured paid route
                                                                │
                                                                ▼
-                                                 SDK middleware
+                                                        SDK middleware
                                                                │
                                                    PAYMENT-SIGNATURE present
                                                                │
@@ -51,13 +51,13 @@ Client ──► chi.Router ──► request-id mw ──► logging mw ──�
                                         └──────────────────────┬───────────────────────┘
                                                                │
                                                                ▼
-                                           EVM exact scheme structural checks
+                                              EVM exact scheme structural checks
                                                                │
                                                                ▼
                                      HTTPFacilitatorClient.Verify(payload, requirements)
                                                                │
                                                                ▼
-                                                     verify OK? ─── no ──► 402
+                                                           verify OK? ─── no ──► 402
                                                                │ yes
                                                                ▼
                                                       business handler runs

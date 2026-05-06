@@ -3,7 +3,9 @@ package config
 
 import (
 	"fmt"
+	"math/big"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -76,6 +78,13 @@ type paymentFileConfig struct {
 	Payment PaymentConfig `yaml:"payment"`
 }
 
+var (
+	evmAddressRe      = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
+	evmCAIP2NetworkRe = regexp.MustCompile(`^eip155:[0-9]+$`)
+)
+
+const maxAcceptTimeoutSeconds = 3600
+
 // Load loads configuration from environment variables.
 func Load() (*Config, error) {
 	cfg := &Config{}
@@ -130,14 +139,32 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("payment.routes must include at least one route")
 	}
 	seen := make(map[string]struct{}, len(c.Payment.Routes))
+	allowedMethods := map[string]struct{}{
+		"GET":     {},
+		"POST":    {},
+		"PUT":     {},
+		"PATCH":   {},
+		"DELETE":  {},
+		"HEAD":    {},
+		"OPTIONS": {},
+	}
 	for i := range c.Payment.Routes {
 		r := &c.Payment.Routes[i]
 		if r.Method == "" {
 			return fmt.Errorf("payment.routes[%d].method is required", i)
 		}
 		r.Method = strings.ToUpper(r.Method)
+		if _, ok := allowedMethods[r.Method]; !ok {
+			return fmt.Errorf("payment.routes[%d].method must be one of: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS", i)
+		}
 		if r.Path == "" {
 			return fmt.Errorf("payment.routes[%d].path is required", i)
+		}
+		if !strings.HasPrefix(r.Path, "/") {
+			return fmt.Errorf("payment.routes[%d].path must start with /", i)
+		}
+		if isReservedPublicRoute(r.Method, r.Path) {
+			return fmt.Errorf("payment.routes[%d] cannot use reserved public route: %s %s", i, r.Method, r.Path)
 		}
 		if r.Handler == "" {
 			return fmt.Errorf("payment.routes[%d].handler is required", i)
@@ -166,18 +193,56 @@ func (c *Config) Validate() error {
 			if accept.Network == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].network is required", i, j)
 			}
+			if !evmCAIP2NetworkRe.MatchString(accept.Network) {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].network must match eip155:<chainId>", i, j)
+			}
 			if accept.Asset == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].asset is required", i, j)
+			}
+			if !evmAddressRe.MatchString(accept.Asset) {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].asset must be a valid EVM address", i, j)
 			}
 			if accept.Amount == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].amount is required", i, j)
 			}
+			if !isPositiveBase10Integer(accept.Amount) {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].amount must be a positive base-10 integer string", i, j)
+			}
 			if accept.PayTo == "" {
 				return fmt.Errorf("payment.routes[%d].accepts[%d].payTo is required", i, j)
+			}
+			if !evmAddressRe.MatchString(accept.PayTo) {
+				return fmt.Errorf("payment.routes[%d].accepts[%d].payTo must be a valid EVM address", i, j)
+			}
+			if accept.MaxTimeoutSeconds != 0 {
+				if accept.MaxTimeoutSeconds < 0 {
+					return fmt.Errorf("payment.routes[%d].accepts[%d].maxTimeoutSeconds must be greater than 0 when set", i, j)
+				}
+				if accept.MaxTimeoutSeconds > maxAcceptTimeoutSeconds {
+					return fmt.Errorf("payment.routes[%d].accepts[%d].maxTimeoutSeconds must be <= %d", i, j, maxAcceptTimeoutSeconds)
+				}
 			}
 		}
 	}
 	return nil
+}
+
+func isReservedPublicRoute(method, path string) bool {
+	return (method == "GET" && path == "/healthz") || (method == "GET" && path == "/info")
+}
+
+func isPositiveBase10Integer(v string) bool {
+	if v == "" {
+		return false
+	}
+	if strings.HasPrefix(v, "+") || strings.HasPrefix(v, "-") {
+		return false
+	}
+	n, ok := new(big.Int).SetString(v, 10)
+	if !ok {
+		return false
+	}
+	return n.Sign() > 0
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

@@ -87,3 +87,25 @@ func TestNewRouter_InvalidHandlerFails(t *testing.T) {
 		t.Fatalf("expected unsupported handler error, got %v", err)
 	}
 }
+
+func TestNewRouter_ReservedRouteFails(t *testing.T) {
+	cfg := &config.Config{
+		Payment: config.PaymentConfig{
+			Routes: []config.PaymentRoute{
+				{
+					Method:  "GET",
+					Path:    "/healthz",
+					Handler: config.PaidHandlerHello,
+				},
+			},
+		},
+	}
+
+	_, err := NewRouter(RouterConfig{Config: cfg})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot use reserved public route") {
+		t.Fatalf("expected reserved route error, got %v", err)
+	}
+}

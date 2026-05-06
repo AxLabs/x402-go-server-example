@@ -19,7 +19,7 @@ func TestLoad(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "1000000000000000000"
-          payTo: 0x1234567890abcdef
+          payTo: 0x1111111111111111111111111111111111111111
           maxTimeoutSeconds: 120
           extra:
             name: xGAS
@@ -33,7 +33,7 @@ func TestLoad(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "500000000000000000"
-          payTo: 0x1234567890abcdef
+          payTo: 0x1111111111111111111111111111111111111111
 `)
 
 	cleanup := setTestEnv(t, map[string]string{
@@ -93,7 +93,7 @@ func TestLoad(t *testing.T) {
 	if len(cfg.Payment.Routes[0].Accepts) != 1 {
 		t.Fatalf("expected first route to have 1 accept, got %d", len(cfg.Payment.Routes[0].Accepts))
 	}
-	if cfg.Payment.Routes[0].Accepts[0].PayTo != "0x1234567890abcdef" {
+	if cfg.Payment.Routes[0].Accepts[0].PayTo != "0x1111111111111111111111111111111111111111" {
 		t.Errorf("expected payTo in first accept, got %s", cfg.Payment.Routes[0].Accepts[0].PayTo)
 	}
 	if cfg.Payment.Routes[0].Accepts[0].Extra["assetTransferMethod"] != "eip3009" {
@@ -112,7 +112,7 @@ func TestLoadDefaults(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
-          payTo: 0xdefault
+          payTo: 0x1111111111111111111111111111111111111111
 `)
 
 	cleanup := setTestEnv(t, map[string]string{
@@ -176,7 +176,7 @@ func TestLoadValidationErrors(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
-          payTo: 0xabc
+          payTo: 0x1111111111111111111111111111111111111111
 `)
 
 	tests := []struct {
@@ -218,7 +218,7 @@ func TestLoadValidationErrors(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
-          payTo: 0xtest
+          payTo: 0x1111111111111111111111111111111111111111
 `),
 			},
 			wantErr: "payment.routes[0].handler is required",
@@ -237,7 +237,7 @@ func TestLoadValidationErrors(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
-          payTo: 0xtest
+          payTo: 0x1111111111111111111111111111111111111111
 `),
 			},
 			wantErr: "payment.routes[0].handler must be one of: paid_hello, paid_echo",
@@ -274,10 +274,163 @@ func TestLoadValidationErrors(t *testing.T) {
           network: eip155:47763
           asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
           amount: "100"
-          payTo: 0xtest
+          payTo: 0x1111111111111111111111111111111111111111
 `),
 			},
 			wantErr: "payment.routes[0].accepts[0].scheme must be exact",
+		},
+		{
+			name: "invalid route method",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: TRACE
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0].method must be one of: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS",
+		},
+		{
+			name: "invalid route path",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0].path must start with /",
+		},
+		{
+			name: "reserved route collision",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /healthz
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0] cannot use reserved public route: GET /healthz",
+		},
+		{
+			name: "invalid accept network",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: base-sepolia
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].network must match eip155:<chainId>",
+		},
+		{
+			name: "invalid accept asset address",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xabc
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].asset must be a valid EVM address",
+		},
+		{
+			name: "invalid accept amount",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "0"
+          payTo: 0x1111111111111111111111111111111111111111
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].amount must be a positive base-10 integer string",
+		},
+		{
+			name: "invalid accept payTo address",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0xtest
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].payTo must be a valid EVM address",
+		},
+		{
+			name: "invalid max timeout",
+			env: map[string]string{
+				"FACILITATOR_BASE_URL": "http://facilitator:3000",
+				"PAYMENT_CONFIG_FILE": writeTestPaymentConfig(t, `payment:
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      accepts:
+        - scheme: exact
+          network: eip155:47763
+          asset: 0xd2a4CfF31913016155e38113C7d8e7F4FC7E63DE
+          amount: "100"
+          payTo: 0x1111111111111111111111111111111111111111
+          maxTimeoutSeconds: 3601
+`),
+			},
+			wantErr: "payment.routes[0].accepts[0].maxTimeoutSeconds must be <= 3600",
 		},
 	}
 
