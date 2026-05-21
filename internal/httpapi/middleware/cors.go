@@ -22,21 +22,28 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 
 	c := cors.New(cors.Options{
 		AllowedOrigins: origins,
-		AllowedMethods: []string{http.MethodGet, http.MethodPost, http.MethodOptions},
-		AllowedHeaders: []string{
-			"Accept",
-			"Authorization",
-			"Content-Type",
-			"PAYMENT-SIGNATURE",
-			"PAYMENT-REQUIRED",
-			"PAYMENT-RESPONSE",
-			"X-Payment",
-			"X-Payment-Response",
+		AllowedMethods: []string{
+			http.MethodGet,
+			http.MethodPost,
+			http.MethodPut,
+			http.MethodPatch,
+			http.MethodDelete,
+			http.MethodOptions,
+			http.MethodHead,
 		},
+		// x402 fetch sends PAYMENT-SIGNATURE (canonical casing); rs/cors matches
+		// Access-Control-Request-Headers literally, so allow all request headers.
+		AllowedHeaders: []string{"*"},
 		ExposedHeaders: []string{
 			"PAYMENT-SIGNATURE",
 			"PAYMENT-REQUIRED",
 			"PAYMENT-RESPONSE",
+			"Payment-Signature",
+			"Payment-Required",
+			"Payment-Response",
+			"payment-signature",
+			"payment-required",
+			"payment-response",
 			"X-Payment",
 			"X-Payment-Response",
 		},
