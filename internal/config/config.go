@@ -14,11 +14,12 @@ import (
 
 // Config holds all application configuration.
 type Config struct {
-	Server            ServerConfig
-	LogLevel          string
-	Facilitator       FacilitatorConfig
-	PaymentConfigFile string
-	Payment           PaymentConfig
+	Server             ServerConfig
+	LogLevel           string
+	Facilitator        FacilitatorConfig
+	PaymentConfigFile  string
+	Payment            PaymentConfig
+	CORSAllowedOrigins []string
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -105,6 +106,14 @@ func Load() (*Config, error) {
 	cfg.Server.ShutdownTimeout = parseDurationOrDefault("SHUTDOWN_TIMEOUT", 30*time.Second)
 
 	cfg.LogLevel = getEnvOrDefault("LOG_LEVEL", "info")
+
+	if v := os.Getenv("CORS_ALLOWED_ORIGINS"); v != "" {
+		for _, part := range strings.Split(v, ",") {
+			if o := strings.TrimSpace(part); o != "" {
+				cfg.CORSAllowedOrigins = append(cfg.CORSAllowedOrigins, o)
+			}
+		}
+	}
 
 	cfg.Facilitator.BaseURL = os.Getenv("FACILITATOR_BASE_URL")
 	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 30*time.Second)

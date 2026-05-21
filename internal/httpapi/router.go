@@ -70,6 +70,7 @@ func NewRouter(cfg RouterConfig) (http.Handler, error) {
 	r := chi.NewRouter()
 
 	// Global middleware (not x402-related).
+	r.Use(middleware.CORS(cfg.Config.CORSAllowedOrigins))
 	r.Use(middleware.Recoverer(cfg.Logger))
 	r.Use(middleware.RequestLogger(cfg.Logger))
 	r.Use(middleware.ContentTypeJSON)

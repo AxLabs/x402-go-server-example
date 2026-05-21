@@ -121,6 +121,7 @@ See [.env.example](.env.example) for the full list. Key variables:
 | `PAYMENT_CONFIG_FILE`  | yes      | —                                | Path to YAML accepts config.           |
 | `SERVER_ADDR`          | no       | `:8080`                          |                                        |
 | `LOG_LEVEL`            | no       | `info`                           | `debug\|info\|warn\|error`             |
+| `CORS_ALLOWED_ORIGINS` | no       | —                                | Comma-separated browser origins (React client URL). |
 
 ### Payment YAML structure
 
@@ -175,6 +176,8 @@ This repo ships a `Dockerfile` and `docker-compose.yml` for production-style dep
 
 5. **Domain** → container port **8080** · **Health check**: `GET /healthz`.
 6. Deploy.
+
+7. If the React client runs on another domain, set `CORS_ALLOWED_ORIGINS` to that origin (comma-separated), e.g. `https://t8pyvsim60q2xbll4i7r9wz0.app.mf.axlabs.net`.
 
 The server syncs with the facilitator on startup. If `FACILITATOR_BASE_URL` is wrong or the facilitator is down, the container will exit during boot.
 
