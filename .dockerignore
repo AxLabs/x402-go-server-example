@@ -1,0 +1,10 @@
+bin/
+.env
+.env.*
+!.env.example
+.git/
+.cache/
+coverage.out
+coverage.html
+*.log
+.instructions/

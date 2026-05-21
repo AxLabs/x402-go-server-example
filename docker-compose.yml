@@ -1,0 +1,21 @@
+# Resource server (seller). Copy .env.example to .env for local runs, or set env in Coolify.
+#
+# HTTP: http://localhost:8080/ (unless SERVER_HOST_PORT is set)
+# Requires a running x402 facilitator (FACILITATOR_BASE_URL).
+
+services:
+  server:
+    build: .
+    restart: unless-stopped
+    environment:
+      SERVER_ADDR: ":8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      READ_TIMEOUT: ${READ_TIMEOUT:-120s}
+      WRITE_TIMEOUT: ${WRITE_TIMEOUT:-120s}
+      REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-120s}
+      SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-30s}
+      FACILITATOR_BASE_URL: ${FACILITATOR_BASE_URL:?FACILITATOR_BASE_URL is required}
+      FACILITATOR_TIMEOUT: ${FACILITATOR_TIMEOUT:-120s}
+      PAYMENT_CONFIG_FILE: ${PAYMENT_CONFIG_FILE:-/app/payment-config.yaml}
+    ports:
+      - "${SERVER_HOST_PORT:-8080}:8080"

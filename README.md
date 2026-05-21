@@ -150,6 +150,54 @@ payment:
 
 ---
 
+## Deploying on Coolify
+
+This repo ships a `Dockerfile` and `docker-compose.yml` for production-style deployment (same pattern as the [ax402](https://github.com/AxLabs/ax402) facilitator wrapper).
+
+### Prerequisites
+
+- A running **x402 facilitator** reachable from the server container (e.g. your Coolify facilitator URL).
+- `payment-config.example.yaml` updated with your real `payTo` addresses (or add `payment-config.yaml` and point `PAYMENT_CONFIG_FILE` at it).
+
+### Coolify setup
+
+1. **New Application** → connect GitHub → select `x402-go-server-example`.
+2. **Build Pack**: **Docker Compose** (not Nixpacks — this project needs Go 1.24).
+3. **Base directory**: `/` · **Compose file**: `docker-compose.yml`.
+4. Set environment variables (minimum):
+
+   | Variable | Example |
+   |----------|---------|
+   | `FACILITATOR_BASE_URL` | `https://facilitator.yourdomain.com` |
+   | `FACILITATOR_TIMEOUT` | `120s` |
+   | `PAYMENT_CONFIG_FILE` | `/app/payment-config.yaml` (default in image) |
+   | `SERVER_HOST_PORT` | `8080` or another free host port |
+
+5. **Domain** → container port **8080** · **Health check**: `GET /healthz`.
+6. Deploy.
+
+The server syncs with the facilitator on startup. If `FACILITATOR_BASE_URL` is wrong or the facilitator is down, the container will exit during boot.
+
+### Local Docker Compose
+
+```bash
+cp .env.example .env
+# edit .env: FACILITATOR_BASE_URL, payment YAML payTo addresses
+docker compose up -d --build
+docker compose logs -f server
+```
+
+Verify:
+
+```bash
+curl -s http://localhost:8080/healthz | jq
+curl -si http://localhost:8080/paid/hello | head -20
+```
+
+If port `8080` is taken on the host, set `SERVER_HOST_PORT` in `.env` (e.g. `8081`).
+
+---
+
 ## Development
 
 ```bash
@@ -180,4 +228,6 @@ internal/httpapi/           chi router + request-logging + request-id middleware
 internal/httpapi/handlers/  business handlers (health, info, paid_hello, paid_echo)
 test/                       integration tests
 docs/                       architecture + request flow notes
+Dockerfile                  production image (Go 1.24, Alpine runtime)
+docker-compose.yml          local / Coolify compose service
 ```
