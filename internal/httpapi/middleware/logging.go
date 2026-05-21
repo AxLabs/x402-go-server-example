@@ -4,6 +4,7 @@ package middleware
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/AxLabs/x402-go-server-example/internal/logging"
@@ -32,8 +33,28 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			// Wrap response writer to capture status code
 			wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
+			if logger.Enabled(ctx, slog.LevelDebug) && strings.HasPrefix(r.URL.Path, "/paid/") {
+				paySig := r.Header.Get("PAYMENT-SIGNATURE")
+				logger.DebugContext(ctx, "x402 trace (request)",
+					"payment_signature_present", paySig != "",
+					"payment_signature_len", len(paySig),
+				)
+			}
+
 			// Process request
 			next.ServeHTTP(wrapped, r)
+
+			if logger.Enabled(ctx, slog.LevelDebug) && strings.HasPrefix(r.URL.Path, "/paid/") {
+				payResp := wrapped.Header().Get("PAYMENT-RESPONSE")
+				prHdr := wrapped.Header().Get("PAYMENT-REQUIRED")
+				logger.DebugContext(ctx, "x402 trace (response)",
+					"status", wrapped.statusCode,
+					"payment_response_present", payResp != "",
+					"payment_response_len", len(payResp),
+					"payment_required_present", prHdr != "",
+					"payment_required_len", len(prHdr),
+				)
+			}
 
 			// Log the request
 			duration := time.Since(start)

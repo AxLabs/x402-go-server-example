@@ -63,6 +63,8 @@ make run
 
 This server reads paid-route definitions from `PAYMENT_CONFIG_FILE`. Each route declares a concrete business `handler` (`paid_hello` or `paid_echo`) plus explicit `accepts` options (`scheme`, `network`, `asset`, `amount`, `payTo`, optional `maxTimeoutSeconds`, optional `extra`) that map directly to x402 `PaymentRequirements`.
 
+You can offer multiple accepts per route (e.g. Base Sepolia USDC via `eip3009` and ZCHF via `permit2`). See `payment-config.example.yaml`.
+
 ### Step 1: Call free and paid routes
 
 Unauthenticated requests to a paid route return an SDK-generated 402 with the `PAYMENT-REQUIRED` header carrying a base64-encoded JSON challenge with the accepts list:

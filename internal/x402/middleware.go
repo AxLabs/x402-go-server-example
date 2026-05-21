@@ -21,11 +21,13 @@
 package x402
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
 	x402 "github.com/x402-foundation/x402/go"
+	"github.com/x402-foundation/x402/go/extensions/bazaar"
 	x402http "github.com/x402-foundation/x402/go/http"
 	"github.com/x402-foundation/x402/go/http/nethttp"
 	evmserver "github.com/x402-foundation/x402/go/mechanisms/evm/exact/server"
@@ -143,13 +145,30 @@ func Middleware(cfg Config) (func(http.Handler) http.Handler, error) {
 		return nil, fmt.Errorf("x402: at least one accept option is required")
 	}
 
-	mw := nethttp.X402Payment(nethttp.Config{
-		Routes:                 routes,
-		Facilitator:            facClient,
-		Schemes:                schemes,
-		SyncFacilitatorOnStart: cfg.SyncFacilitatorOnStart,
-		Timeout:                timeout,
-	})
+	// Build the HTTP resource server explicitly so facilitator sync errors
+	// fail startup. nethttp.X402Payment only logs a warning on Initialize
+	// failure, which leaves facilitatorClients empty and produces
+	// no_facilitator_for_network on the first paid retry.
+	serverOpts := []x402.ResourceServerOption{x402.WithFacilitatorClient(facClient)}
+	httpServer := x402http.Newx402HTTPResourceServer(routes, serverOpts...)
+	for _, scheme := range schemes {
+		httpServer.Register(scheme.Network, scheme.Server)
+	}
+	httpServer.RegisterExtension(bazaar.BazaarResourceServerExtension)
+
+	if cfg.SyncFacilitatorOnStart {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		if err := httpServer.Initialize(ctx); err != nil {
+			return nil, fmt.Errorf("x402: facilitator sync failed (%s): %w", cfg.FacilitatorURL, err)
+		}
+	}
+
+	mw := nethttp.PaymentMiddlewareFromHTTPServer(
+		httpServer,
+		nethttp.WithSyncFacilitatorOnStart(false),
+		nethttp.WithTimeout(timeout),
+	)
 
 	return mw, nil
 }

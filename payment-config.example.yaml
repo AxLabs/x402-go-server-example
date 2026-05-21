@@ -1,6 +1,8 @@
 payment:
-  # This example intentionally demonstrates multi-network accepts on one route
-  # (Base Sepolia + Neo X Testnet). Replace addresses/amounts before use.
+  # Multi-network: Neo X (EIP-3009) + Base Sepolia (USDC via EIP-3009, ZCHF via Permit2).
+  # Base Sepolia USDC: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+  # Base Sepolia ZCHF:  0xEdF8a988A61849ce611E932d03D0Bac066304F59
+  # Replace payTo with your merchant address on each accept.
   routes:
     - method: GET
       path: /paid/hello
@@ -8,23 +10,35 @@ payment:
       description: Paid hello resource
       accepts:
         - scheme: exact
-          network: eip155:84532
-          # Example token address on Base Sepolia (replace with your actual token).
-          asset: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
-          amount: "10000"
-          payTo: 0x1111111111111111111111111111111111111111
-          maxTimeoutSeconds: 300
-        - scheme: exact
           network: eip155:12227332
-          # Example xGAS-style option on Neo X (replace with your actual xGAS token address).
-          asset: 0x2222222222222222222222222222222222222222
+          asset: 0xD4ac6B385C16cd94A8E54aB422138833804AE443
           amount: "1000000000000000000"
-          payTo: 0x1111111111111111111111111111111111111111
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
           maxTimeoutSeconds: 300
           extra:
-            name: xGAS
+            name: Extended GAS
             version: "1"
             assetTransferMethod: eip3009
+        - scheme: exact
+          network: eip155:84532
+          asset: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
+          amount: "100000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            name: USDC
+            version: "2"
+            assetTransferMethod: eip3009
+        - scheme: exact
+          network: eip155:84532
+          asset: "0xEdF8a988A61849ce611E932d03D0Bac066304F59"
+          amount: "1000000000000000000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            assetTransferMethod: permit2
+            name: Frankencoin
+            version: "1"
 
     - method: POST
       path: /paid/echo
@@ -32,8 +46,32 @@ payment:
       description: Paid echo resource
       accepts:
         - scheme: exact
+          network: eip155:12227332
+          asset: 0xD4ac6B385C16cd94A8E54aB422138833804AE443
+          amount: "500000000000000000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            name: Extended GAS
+            version: "1"
+            assetTransferMethod: eip3009
+        - scheme: exact
           network: eip155:84532
           asset: 0x036CbD53842c5426634e7929541eC2318f3dCF7e
-          amount: "5000"
-          payTo: 0x1111111111111111111111111111111111111111
+          amount: "100000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
           maxTimeoutSeconds: 300
+          extra:
+            name: USDC
+            version: "2"
+            assetTransferMethod: eip3009
+        - scheme: exact
+          network: eip155:84532
+          asset: "0xEdF8a988A61849ce611E932d03D0Bac066304F59"
+          amount: "1000000000000000000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            assetTransferMethod: permit2
+            name: Frankencoin
+            version: "1"
