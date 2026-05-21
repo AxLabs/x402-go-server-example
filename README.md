@@ -163,7 +163,7 @@ This repo ships a `Dockerfile` and `docker-compose.yml` for production-style dep
 
 1. **New Application** → connect GitHub → select `x402-go-server-example`.
 2. **Build Pack**: **Docker Compose** (not Nixpacks — this project needs Go 1.24).
-3. **Base directory**: `/` · **Compose file**: `docker-compose.yml`.
+3. **Base directory**: `/` · **Compose file**: `docker-compose.coolify.yml` (when facilitator is on the same Coolify host).
 4. Set environment variables (minimum):
 
    | Variable | Example |
@@ -177,6 +177,70 @@ This repo ships a `Dockerfile` and `docker-compose.yml` for production-style dep
 6. Deploy.
 
 The server syncs with the facilitator on startup. If `FACILITATOR_BASE_URL` is wrong or the facilitator is down, the container will exit during boot.
+
+### Reaching the facilitator from the server container (Coolify)
+
+Coolify runs each app on its own Docker network. **`http://172.17.0.1:8088` often times out** — that is not a reliable way to reach another stack.
+
+**Recommended:** join the facilitator’s Docker network via compose (Coolify env), then use the **internal** service URL (container port **8080**, not host **8088**).
+
+**Stable vs ephemeral names**
+
+| Stable (use these) | Changes every deploy (do not use in URLs) |
+|--------------------|---------------------------------------------|
+| Docker network `hg20xignraizz6za0lx0ydja` (Coolify app UUID) | Container `facilitator-hg20xignraizz6za0lx0ydja-105356082802` |
+| Compose hostname `facilitator` (port **8080**) | Host port `8088` (only for curl on the VPS host) |
+
+1. On the Coolify host, find the facilitator network name:
+
+   ```bash
+   docker ps --format '{{.Names}}' | grep facilitator
+   # example: facilitator-hg20xignraizz6za0lx0ydja-075039758871
+
+   docker inspect facilitator-hg20xignraizz6za0lx0ydja-075039758871 \
+     --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}'
+   # example output: hg20xignraizz6za0lx0ydja
+   ```
+
+2. On the **server** Coolify app, set:
+
+   ```env
+   FACILITATOR_DOCKER_NETWORK=hg20xignraizz6za0lx0ydja
+   FACILITATOR_BASE_URL=http://facilitator:8080
+   ```
+
+   Use your actual network name from step 1 (often the facilitator app’s UUID).
+
+3. In Coolify **Docker Compose Location**, set `./docker-compose.coolify.yml` (not the base file alone).
+
+4. Redeploy the server.
+
+5. If `lookup facilitator` still fails, resolve the live hostname from the shared network:
+
+   ```bash
+   docker network inspect hg20xignraizz6za0lx0ydja \
+     --format '{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}'
+   ```
+
+   Then try `FACILITATOR_BASE_URL=http://<facilitator-container-name>:8080` or `http://<ip>:8080`.
+
+**Note:** Coolify’s **Connect to Predefined Network** checkbox alone often does **not** register the `facilitator` DNS name (you may see `lookup facilitator … server misbehaving`). Use `docker-compose.coolify.yml` + `FACILITATOR_DOCKER_NETWORK` instead (you can uncheck Predefined Network).
+
+**Verify from a running server container:**
+
+```bash
+docker exec -it <server-container> wget -qO- http://facilitator:8080/health
+```
+
+**Alternatives:**
+
+| `FACILITATOR_BASE_URL` | When it works |
+|------------------------|----------------|
+| `http://facilitator:8080` | Same Docker network (best on Coolify) |
+| `https://ax402.app.mf.axlabs.net` | Public HTTPS + domain configured on facilitator |
+| `http://host.docker.internal:8088` | Host port publish + `extra_hosts` (may still fail on some hosts) |
+
+Do **not** use host port `8088` in the URL when talking to the `facilitator` service name — use **8080** (inside the container).
 
 ### Local Docker Compose
 

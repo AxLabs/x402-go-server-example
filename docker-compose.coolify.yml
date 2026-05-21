@@ -1,0 +1,17 @@
+# Coolify overlay: joins the facilitator stack network so http://facilitator:8080 resolves.
+# In Coolify set "Docker Compose Location" to ./docker-compose.coolify.yml
+# and set FACILITATOR_DOCKER_NETWORK to the facilitator app's network name.
+
+include:
+  - docker-compose.yml
+
+services:
+  server:
+    networks:
+      - default
+      - facilitator
+
+networks:
+  facilitator:
+    external: true
+    name: ${FACILITATOR_DOCKER_NETWORK:?set FACILITATOR_DOCKER_NETWORK to the facilitator Docker network}
