@@ -1,0 +1,38 @@
+payment:
+  # All prices are 0.1 in human units:
+  #   ZCHF (18 decimals): "100000000000000000"
+  # Base mainnet ZCHF token: 0xD4dD9e2F021BB459D5A5f6c24C12fE09c5D45553
+  # Base mainnet ZCHF EIP-3009 wrapper (use as asset for eip3009): 0x36C7e7fD70fC312E4b26EC7F13C7c59C9Ba25647
+  # Replace payTo with your merchant address on each accept.
+  routes:
+    - method: GET
+      path: /paid/hello
+      handler: paid_hello
+      description: Paid hello resource
+      accepts:
+        - scheme: exact
+          network: eip155:8453
+          asset: 0x36C7e7fD70fC312E4b26EC7F13C7c59C9Ba25647
+          amount: "100000000000000000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            name: Frankencoin
+            version: "1"
+            assetTransferMethod: eip3009
+
+    - method: POST
+      path: /paid/echo
+      handler: paid_echo
+      description: Paid echo resource
+      accepts:
+        - scheme: exact
+          network: eip155:8453
+          asset: 0x36C7e7fD70fC312E4b26EC7F13C7c59C9Ba25647
+          amount: "100000000000000000"
+          payTo: 0x6d5aB248dFB8074812d841B06DE7B3382230b4FF
+          maxTimeoutSeconds: 300
+          extra:
+            name: Frankencoin
+            version: "1"
+            assetTransferMethod: eip3009
