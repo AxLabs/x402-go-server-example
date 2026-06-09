@@ -29,9 +29,8 @@ An example Go HTTP server for x402 that monetizes resources with the [x402](http
         ├── /healthz, /info ─────┼──► business handler (no payment)
         │                        │
         └── configured paid route│
-          │                │
+                │                │
           SDK middleware         │
-          (nethttp.X402Payment)  │
                 │                │
           ┌─────┴─────────────┐  │
           │ EVM exact scheme  │  │
@@ -67,19 +66,21 @@ You can offer multiple accepts per route (e.g. Base Sepolia USDC via `eip3009` a
 
 ### Step 1: Call free and paid routes
 
-Unauthenticated requests to a paid route return an SDK-generated 402 with the `PAYMENT-REQUIRED` header carrying a base64-encoded JSON challenge with the accepts list:
+Unauthenticated requests to a paid route return an SDK-generated 402. The `PAYMENT-REQUIRED` header carries the base64-encoded payment requirements JSON.
+
+HTTP header names are case-insensitive; Go renders this header as `Payment-Required` in `curl -i` output:
 
 ```bash
 curl -i http://localhost:8080/paid/hello
 # HTTP/1.1 402 Payment Required
-# PAYMENT-REQUIRED: eyJ4NDAyVmVyc2lvbiI6MiwiYWNjZXB0cyI6W119
+# Payment-Required: <base64-encoded-payment-requirements-json>
 ```
 
 Decode helper:
 
 ```bash
 curl -si http://localhost:8080/paid/hello \
-  | awk -F': ' '/^PAYMENT-REQUIRED:/ {print $2}' \
+  | awk -F': ' 'tolower($1) == "payment-required" {print $2}' \
   | tr -d '\r\n' \
   | base64 --decode | jq .
 ```
@@ -90,6 +91,8 @@ The health and info endpoints are always free:
 curl -s http://localhost:8080/healthz | jq
 curl -s http://localhost:8080/info | jq
 ```
+
+`/healthz` is a liveness endpoint for health checks. `/info` returns service metadata and the configured paid routes with their payment options.
 
 ### Step 2: Use the client example to pay
 
@@ -117,9 +120,13 @@ See [.env.example](.env.example) for the full list. Key variables:
 | Variable               | Required | Default                          | Notes                                  |
 |------------------------|----------|----------------------------------|----------------------------------------|
 | `FACILITATOR_BASE_URL` | yes      | —                                | Must speak x402.                       |
-| `FACILITATOR_TIMEOUT`  | no       | `30s`                            |                                        |
+| `FACILITATOR_TIMEOUT`  | no       | `120s`                           |                                        |
 | `PAYMENT_CONFIG_FILE`  | yes      | —                                | Path to YAML accepts config.           |
 | `SERVER_ADDR`          | no       | `:8080`                          |                                        |
+| `READ_TIMEOUT`         | no       | `120s`                           | HTTP server read timeout.              |
+| `WRITE_TIMEOUT`        | no       | `120s`                           | HTTP server write timeout.             |
+| `REQUEST_TIMEOUT`      | no       | `120s`                           | x402 middleware request timeout.       |
+| `SHUTDOWN_TIMEOUT`     | no       | `30s`                            | Graceful shutdown timeout.             |
 | `LOG_LEVEL`            | no       | `info`                           | `debug\|info\|warn\|error`             |
 | `CORS_ALLOWED_ORIGINS` | no       | —                                | Comma-separated browser origins (React client URL). |
 
@@ -153,7 +160,7 @@ payment:
 
 ## Deploying on Coolify
 
-This repo ships a `Dockerfile` and `docker-compose.yml` for production-style deployment (same pattern as the [ax402](https://github.com/AxLabs/ax402) facilitator wrapper).
+This repo ships a `Dockerfile`, `docker-compose.yml`, and `docker-compose.coolify.yml` for production-style deployment (same pattern as the [ax402](https://github.com/AxLabs/ax402) facilitator wrapper).
 
 ### Prerequisites
 
@@ -291,7 +298,7 @@ internal/config/            env-driven configuration + tests
 internal/logging/           slog wrapper
 internal/version/           build-info vars
 internal/x402/              thin factory over the x402 Go SDK (middleware.go)
-internal/httpapi/           chi router + request-logging + request-id middleware
+internal/httpapi/           chi router + request logging, request IDs, CORS, recovery
 internal/httpapi/handlers/  business handlers (health, info, paid_hello, paid_echo)
 test/                       integration tests
 docs/                       architecture + request flow notes

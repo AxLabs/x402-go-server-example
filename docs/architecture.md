@@ -17,7 +17,7 @@
 ┌───────────────────────────────────────────────────────────────────┐
 │ internal/httpapi/router.go                                        │
 │   chi.Mux with:                                                   │
-│     • request-id + slog request-logging middleware                │
+│     • slog request logging with X-Request-ID propagation          │
 │     • GET /healthz, GET /info  (unpaid)                           │
 │     • paid routes loaded from PAYMENT_CONFIG_FILE                 │
 │       each route gets cfg.X402Middleware and a bound handler      │
@@ -28,12 +28,10 @@
 │ internal/x402/middleware.go                                       │
 │   Single entrypoint that calls into the SDK:                      │
 │     • x402http.NewHTTPFacilitatorClient({URL, Timeout})           │
-│     • evmserver.NewExactEvmScheme()                               │
-│     • nethttp.X402Payment(nethttp.Config{                         │
-│         Routes:      RoutesConfig{…}                              │
-│         Facilitator: …                                            │
-│         Schemes:     {NewExactEvmScheme()}                        │
-│       })                                                          │
+│     • x402http.Newx402HTTPResourceServer(RoutesConfig{…}, …)      │
+│     • registers evmserver.NewExactEvmScheme() per network         │
+│     • initializes facilitator support at startup                   │
+│     • nethttp.PaymentMiddlewareFromHTTPServer(…)                  │
 │   Returns a plain func(http.Handler) http.Handler.                │
 └───────────────────────────────────────────────────────────────────┘
                               │
@@ -78,7 +76,7 @@
 
 - `router.go` builds the chi router and dynamically registers paid routes from config.
 - Each configured paid route is bound to a concrete handler (`paid_hello` or `paid_echo`) and wrapped with the SDK middleware.
-- `middleware/` contains request-id and request-logging middleware.
+- `middleware/` contains CORS, recovery, JSON content-type, and request logging; the request logger also propagates/generates `X-Request-ID`.
 - `handlers/` contains **protocol-agnostic** handlers. They do not import the SDK and do not touch any payment-related context keys.
 
 ### `test/`
@@ -103,5 +101,5 @@
 
 - No custom `X-Payment` / `X-Payment-Required` headers; the SDK uses `PAYMENT-SIGNATURE` / `PAYMENT-REQUIRED` / `PAYMENT-RESPONSE`.
 - No hand-written facilitator client; `x402http.HTTPFacilitatorClient` is used directly.
-- No verify/settle orchestration; `nethttp.X402Payment` does this.
+- No verify/settle orchestration; the SDK resource server and net/http middleware do this.
 - No payment models in `internal/`; the SDK's types are used where needed (and nowhere else, since handlers don't need them).

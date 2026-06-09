@@ -100,9 +100,9 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 
 	cfg.Server.Addr = getEnvOrDefault("SERVER_ADDR", ":8080")
-	cfg.Server.ReadTimeout = parseDurationOrDefault("READ_TIMEOUT", 15*time.Second)
-	cfg.Server.WriteTimeout = parseDurationOrDefault("WRITE_TIMEOUT", 15*time.Second)
-	cfg.Server.RequestTimeout = parseDurationOrDefault("REQUEST_TIMEOUT", 30*time.Second)
+	cfg.Server.ReadTimeout = parseDurationOrDefault("READ_TIMEOUT", 120*time.Second)
+	cfg.Server.WriteTimeout = parseDurationOrDefault("WRITE_TIMEOUT", 120*time.Second)
+	cfg.Server.RequestTimeout = parseDurationOrDefault("REQUEST_TIMEOUT", 120*time.Second)
 	cfg.Server.ShutdownTimeout = parseDurationOrDefault("SHUTDOWN_TIMEOUT", 30*time.Second)
 
 	cfg.LogLevel = getEnvOrDefault("LOG_LEVEL", "info")
@@ -116,7 +116,7 @@ func Load() (*Config, error) {
 	}
 
 	cfg.Facilitator.BaseURL = os.Getenv("FACILITATOR_BASE_URL")
-	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 30*time.Second)
+	cfg.Facilitator.Timeout = parseDurationOrDefault("FACILITATOR_TIMEOUT", 120*time.Second)
 
 	cfg.PaymentConfigFile = os.Getenv("PAYMENT_CONFIG_FILE")
 	if cfg.PaymentConfigFile == "" {

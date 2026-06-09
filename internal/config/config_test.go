@@ -130,11 +130,23 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Server.Addr != ":8080" {
 		t.Errorf("expected default addr :8080, got %s", cfg.Server.Addr)
 	}
+	if cfg.Server.ReadTimeout != 120*time.Second {
+		t.Errorf("expected default read timeout 120s, got %v", cfg.Server.ReadTimeout)
+	}
+	if cfg.Server.WriteTimeout != 120*time.Second {
+		t.Errorf("expected default write timeout 120s, got %v", cfg.Server.WriteTimeout)
+	}
+	if cfg.Server.RequestTimeout != 120*time.Second {
+		t.Errorf("expected default request timeout 120s, got %v", cfg.Server.RequestTimeout)
+	}
+	if cfg.Server.ShutdownTimeout != 30*time.Second {
+		t.Errorf("expected default shutdown timeout 30s, got %v", cfg.Server.ShutdownTimeout)
+	}
 	if cfg.LogLevel != "info" {
 		t.Errorf("expected default log level info, got %s", cfg.LogLevel)
 	}
-	if cfg.Facilitator.Timeout != 30*time.Second {
-		t.Errorf("expected default facilitator timeout 30s, got %v", cfg.Facilitator.Timeout)
+	if cfg.Facilitator.Timeout != 120*time.Second {
+		t.Errorf("expected default facilitator timeout 120s, got %v", cfg.Facilitator.Timeout)
 	}
 }
 

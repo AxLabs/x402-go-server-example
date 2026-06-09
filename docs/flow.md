@@ -5,7 +5,7 @@ This document traces an HTTP request from the client to a paid handler, showing 
 ## Unpaid request — e.g. `GET /healthz`
 
 ```text
-Client ──► chi.Router ──► request-id mw ──► request-logging mw ──► healthHandler ──► 200
+Client ──► chi.Router ──► request logging mw (sets X-Request-ID) ──► healthHandler ──► 200
 ```
 
 No SDK code runs. The request does not match any configured paid route.
@@ -13,16 +13,16 @@ No SDK code runs. The request does not match any configured paid route.
 ## Paid request — unauthenticated
 
 ```text
-Client ──► chi.Router ──► request-id mw ──► logging mw ──► configured paid route
+Client ──► chi.Router ──► request logging mw ──► configured paid route
                                                                │
                                                                ▼
-                                                 SDK middleware (nethttp.X402Payment)
+                                                 SDK net/http middleware
                                                                │
                                                         no PAYMENT-SIGNATURE
                                                                │
                                                                ▼
                                                402 Payment Required
-                                               PAYMENT-REQUIRED: base64(JSON{x402Version, accepts:[…]})
+                                               PAYMENT-REQUIRED: base64(payment requirements JSON)
                                                body: null
 ```
 
@@ -36,7 +36,7 @@ What the SDK does here:
 ## Paid request — authenticated
 
 ```text
-Client ──► chi.Router ──► request-id mw ──► logging mw ──► configured paid route
+Client ──► chi.Router ──► request logging mw ──► configured paid route
                                                                │
                                                                ▼
                                                         SDK middleware
@@ -80,9 +80,9 @@ Things worth noting:
 
 ## Error paths
 
-- **Invalid JSON body on `POST /paid/echo`**: `paid_echo` handler returns 400 **before** any body processing occurs. The SDK middleware has already verified payment at this point, so a settlement attempt still follows only on success. (Our example keeps this simple; a real server would tie settlement to a successful handler outcome more carefully.)
+- **Invalid JSON body on `POST /paid/echo`**: the SDK middleware verifies payment before the handler reads the request body. If the body is invalid, `paid_echo` returns 400. (Our example keeps this simple; a real server would tie settlement to a successful handler outcome more carefully.)
 - **Unknown path**: chi's `NotFoundHandler` returns a JSON 404; the SDK middleware is never reached because the path is not matched by any configured paid route.
-- **Facilitator unreachable at startup**: `nethttp.X402Payment` with `SyncFacilitatorOnStart: true` surfaces this as an error from `x402.Middleware(...)`, which `cmd/server/main.go` treats as fatal.
+- **Facilitator unreachable at startup**: `x402.Middleware(...)` initializes facilitator support before returning the middleware, and `cmd/server/main.go` treats initialization failure as fatal.
 
 ## Where to look in the code
 
